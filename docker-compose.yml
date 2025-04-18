@@ -1,0 +1,161 @@
+services:
+  webapp:
+    build:
+      context: ./webapp
+    image: gadgetgrove-webapp:latest
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./webapp:/app
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_QUEUE=event_queue
+      - POSTGRES_HOST=postgres-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=events
+    depends_on:
+      - rabbitmq
+      - postgres-db
+
+  celery-worker:
+    image: gadgetgrove-webapp:latest
+    command: celery -A celery_app.celery_app worker --loglevel=info
+    depends_on:
+      - rabbitmq
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_QUEUE=event_queue
+
+  traffic-gen:
+    image: gadgetgrove-webapp:latest
+    command: python traffic_gen.py
+    environment:
+      - WEBAPP_URL=http://webapp:8000
+    volumes:
+      - ./webapp:/app
+    depends_on:
+      - webapp
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+
+  raw-consumer:
+    image: gadgetgrove-webapp:latest
+    volumes:
+      - ./raw-consumer:/app
+      - data-landing:/data/raw
+    environment:
+      - RABBITMQ_HOST=rabbitmq
+      - RABBITMQ_PORT=5672
+      - RABBITMQ_QUEUE=event_queue
+
+  postgres-db:
+    image: postgres:15
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=events
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  spark-master:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=master
+    ports:
+      - "7077:7077"
+      - "8080:8080"
+    volumes:
+      - ./spark/jobs:/opt/spark/jobs
+      - data-landing:/data
+
+  spark-worker:
+    image: bitnami/spark:3.5
+    environment:
+      - SPARK_MODE=worker
+      - SPARK_MASTER_URL=spark://spark-master:7077
+    depends_on:
+      - spark-master
+    volumes:
+      - data-landing:/data
+
+  prefect-server:
+    image: prefecthq/prefect:3-latest
+    ports:
+      - "4200:4200"
+    volumes:
+      - ./prefect:/app
+    command: prefect server start
+
+  prefect-agent:
+    image: prefecthq/prefect:3-latest
+    depends_on:
+      - prefect-server
+    volumes:
+      - ./prefect:/app
+      - data-landing:/data
+      - ./spark/jobs:/opt/spark/jobs
+      - ./dbt:/opt/dbt
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      - PREFECT_API_URL=http://prefect-server:4200/api
+      - SPARK_MASTER=spark://spark-master:7077
+      - POSTGRES_HOST=postgres-db
+      - POSTGRES_PORT=5432
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=events
+    command: prefect agent start -q default
+
+  dbt:
+    build:
+      context: ./dbt_project
+    image: dbt-postgres-arm64:latest
+    volumes:
+      - ./dbt_project:/usr/app
+    working_dir: /usr/app
+    depends_on:
+      - postgres-db
+    environment:
+      DBT_PROFILES_DIR: /usr/app
+
+  init:
+    image: gadgetgrove-webapp:latest
+    command: /init/run.sh
+    volumes:
+      - .webapp:/app
+      - ./data:/app/data
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      prefect-server:
+        condition: service_started
+    user: root
+    environment:
+      DATABASE_NAME: ${DATABASE_NAME}
+      DATABASE_USERNAME: ${DATABASE_USERNAME}
+      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
+      DATABASE_HOST: ${DATABASE_HOST}
+      DATABASE_PORT: ${DATABASE_PORT}
+      PREFECT_API_URL: http://prefect-server:4200/api
+      DD_SERVICE: ${DD_SERVICE}
+    env_file:
+      - .env
+
+volumes:
+  data-landing:
+  postgres-data:
+  rabbitmq-data:

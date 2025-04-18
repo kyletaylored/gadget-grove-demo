@@ -1,0 +1,17 @@
+name: gadgetgrove
+version: "1.0"
+config-version: 2
+
+profile: gadgetgrove
+
+model-paths: ["models"]
+target-path: "target"
+clean-targets: ["target", "dbt_modules"]
+
+models:
+  gadgetgrove:
+    +materialized: view
+    staging:
+      +schema: staging
+    analytics:
+      +schema: analytics

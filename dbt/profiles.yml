@@ -1,0 +1,12 @@
+gadgetgrove:
+  target: dev
+  outputs:
+    dev:
+      type: postgres
+      host: postgres-db
+      user: postgres
+      password: postgres
+      port: 5432
+      dbname: events
+      schema: raw_data
+      threads: 2
