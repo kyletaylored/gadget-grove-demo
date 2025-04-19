@@ -8,7 +8,6 @@ RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 RABBITMQ_PORT = int(os.getenv("RABBITMQ_PORT", 5672))
 QUEUE_NAME = os.getenv("RABBITMQ_QUEUE", "event_queue")
 RAW_DIR = Path("/data/raw")
-
 RAW_DIR.mkdir(parents=True, exist_ok=True)
 
 

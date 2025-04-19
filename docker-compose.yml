@@ -7,15 +7,9 @@ services:
       - "8000:8000"
     volumes:
       - ./webapp:/app
-    environment:
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_QUEUE=event_queue
-      - POSTGRES_HOST=postgres-db
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=events
+      - logs:/var/log/webapp
+    env_file:
+      - .env
     depends_on:
       - rabbitmq
       - postgres-db
@@ -23,22 +17,33 @@ services:
   celery-worker:
     image: gadgetgrove-webapp:latest
     command: celery -A celery_app.celery_app worker --loglevel=info
+    volumes:
+      - logs:/var/log/celery
+    env_file:
+      - .env
     depends_on:
       - rabbitmq
-    environment:
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_QUEUE=event_queue
 
   traffic-gen:
     image: gadgetgrove-webapp:latest
     command: python traffic_gen.py
-    environment:
-      - WEBAPP_URL=http://webapp:8000
     volumes:
       - ./webapp:/app
+      - logs:/var/log/traffic-gen
+    env_file:
+      - .env
     depends_on:
       - webapp
+
+  raw-consumer:
+    image: gadgetgrove-webapp:latest
+    command: python consumer.py
+    volumes:
+      - ./webapp:/app
+      - data-landing:/data/raw
+      - logs:/var/log/consumer
+    env_file:
+      - .env
 
   rabbitmq:
     image: rabbitmq:3-management
@@ -47,59 +52,73 @@ services:
       - "15672:15672"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
-
-  raw-consumer:
-    image: gadgetgrove-webapp:latest
-    volumes:
-      - ./raw-consumer:/app
-      - data-landing:/data/raw
-    environment:
-      - RABBITMQ_HOST=rabbitmq
-      - RABBITMQ_PORT=5672
-      - RABBITMQ_QUEUE=event_queue
+      - logs:/var/log/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmqctl", "status"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
 
   postgres-db:
     image: postgres:15
     ports:
       - "5432:5432"
-    environment:
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=events
     volumes:
       - postgres-data:/var/lib/postgresql/data
+      - logs:/var/log/postgres
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
 
   spark-master:
     image: bitnami/spark:3.5
-    environment:
-      - SPARK_MODE=master
     ports:
       - "7077:7077"
       - "8080:8080"
     volumes:
       - ./spark/jobs:/opt/spark/jobs
       - data-landing:/data
+      - logs:/var/log/spark-master
+    env_file:
+      - .env
 
   spark-worker:
     image: bitnami/spark:3.5
-    environment:
-      - SPARK_MODE=worker
-      - SPARK_MASTER_URL=spark://spark-master:7077
     depends_on:
       - spark-master
     volumes:
       - data-landing:/data
+      - logs:/var/log/spark-worker
+    env_file:
+      - .env
 
   prefect-server:
     image: prefecthq/prefect:3-latest
+    command: prefect server start
     ports:
       - "4200:4200"
     volumes:
       - ./prefect:/app
-    command: prefect server start
+      - logs:/var/log/prefect-server
+    env_file:
+      - .env
+    depends_on:
+      - postgres-db
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4200/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   prefect-agent:
     image: prefecthq/prefect:3-latest
+    command: prefect worker start --pool ${WORK_POOL}
+    env_file:
+      - .env
     depends_on:
       - prefect-server
     volumes:
@@ -108,34 +127,25 @@ services:
       - ./spark/jobs:/opt/spark/jobs
       - ./dbt:/opt/dbt
       - /var/run/docker.sock:/var/run/docker.sock
-    environment:
-      - PREFECT_API_URL=http://prefect-server:4200/api
-      - SPARK_MASTER=spark://spark-master:7077
-      - POSTGRES_HOST=postgres-db
-      - POSTGRES_PORT=5432
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
-      - POSTGRES_DB=events
-    command: prefect agent start -q default
+      - logs:/var/log/prefect-agent
 
   dbt:
     build:
-      context: ./dbt_project
+      context: ./dbt
     image: dbt-postgres-arm64:latest
-    volumes:
-      - ./dbt_project:/usr/app
     working_dir: /usr/app
+    volumes:
+      - ./dbt:/usr/app
+      - logs:/var/log/dbt
     depends_on:
       - postgres-db
-    environment:
-      DBT_PROFILES_DIR: /usr/app
+    env_file:
+      - .env
 
   init:
     image: gadgetgrove-webapp:latest
-    command: /init/run.sh
-    volumes:
-      - .webapp:/app
-      - ./data:/app/data
+    command: init/run.sh
+    user: root
     depends_on:
       postgres-db:
         condition: service_healthy
@@ -143,15 +153,10 @@ services:
         condition: service_healthy
       prefect-server:
         condition: service_started
-    user: root
-    environment:
-      DATABASE_NAME: ${DATABASE_NAME}
-      DATABASE_USERNAME: ${DATABASE_USERNAME}
-      DATABASE_PASSWORD: ${DATABASE_PASSWORD}
-      DATABASE_HOST: ${DATABASE_HOST}
-      DATABASE_PORT: ${DATABASE_PORT}
-      PREFECT_API_URL: http://prefect-server:4200/api
-      DD_SERVICE: ${DD_SERVICE}
+    volumes:
+      - ./webapp:/app
+      - ./data:/app/data
+      - logs:/var/log/init
     env_file:
       - .env
 
@@ -159,3 +164,4 @@ volumes:
   data-landing:
   postgres-data:
   rabbitmq-data:
+  logs:

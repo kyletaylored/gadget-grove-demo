@@ -7,7 +7,8 @@ import os
 RAW_DIR = Path("/data/raw")
 PROCESSING_DIR = Path("/data/processing")
 ARCHIVE_DIR = Path("/data/archive")
-SPARK_SCRIPT = "/opt/spark/jobs/process_logs.py"
+SPARK_SCRIPT = os.getenv("SPARK_SCRIPT", "/opt/spark/jobs/process_logs.py")
+DBT_PROJECT_DIR = os.getenv("DBT_PROFILES_DIR", "/opt/dbt")
 
 
 @task
@@ -58,9 +59,9 @@ def run_pipeline():
 def run_dbt_transform():
     result = subprocess.run([
         "docker", "run", "--rm",
-        "--network", "host",  # required so container can reach postgres-db
-        "-v", f"{os.getcwd()}/dbt_project:/usr/app",
-        "-e", "DBT_PROFILES_DIR=/usr/app",
+        "--network", "host",
+        "-v", f"{DBT_PROJECT_DIR}:{DBT_PROJECT_DIR}",
+        "-e", "DBT_PROFILES_DIR=" + DBT_PROJECT_DIR,
         "dbt-postgres-arm64:latest",
         "dbt", "run"
     ], capture_output=True, text=True)

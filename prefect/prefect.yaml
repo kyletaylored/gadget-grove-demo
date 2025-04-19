@@ -1,0 +1,16 @@
+# prefect/prefect.yaml
+
+version: 2.0
+
+deployments:
+  - name: gadgetgrove-pipeline
+    version: 1.0.0
+    entrypoint: event_pipeline.py:run_pipeline
+    work_pool:
+      name: "{{ prefect.variables.work_pool | default('default-agent-pool') }}"
+      job_variables:
+        image: gadgetgrove-webapp:latest
+    schedule:
+      interval: 60 # every 60 seconds
+    parameters: {}
+    tags: [etl, gadgetgrove]

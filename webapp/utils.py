@@ -3,11 +3,12 @@ import json
 import os
 
 QUEUE_NAME = os.getenv("RABBITMQ_QUEUE", "event_queue")
+RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
 
 
 def send_event(event):
     connection = pika.BlockingConnection(
-        pika.ConnectionParameters(os.getenv("RABBITMQ_HOST", "rabbitmq")))
+        pika.ConnectionParameters(RABBITMQ_HOST))
     channel = connection.channel()
     channel.queue_declare(queue=QUEUE_NAME, durable=True)
     channel.basic_publish(
