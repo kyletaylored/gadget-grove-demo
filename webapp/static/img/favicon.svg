@@ -1,0 +1,28 @@
+<svg viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- Background -->
+  <rect x="0" y="0" width="64" height="64" rx="12" fill="#0d6efd" />
+  
+  <!-- Gear icon -->
+  <path d="M32,16c-8.8,0-16,7.2-16,16s7.2,16,16,16s16-7.2,16-16S40.8,16,32,16z M32,44c-6.6,0-12-5.4-12-12
+    s5.4-12,12-12s12,5.4,12,12S38.6,44,32,44z" fill="#ffffff" />
+  
+  <!-- Center circle -->
+  <circle cx="32" cy="32" r="6" fill="#ffffff" />
+  
+  <!-- Gear teeth -->
+  <rect x="30" y="10" width="4" height="8" rx="1" fill="#ffffff" />
+  <rect x="30" y="46" width="4" height="8" rx="1" fill="#ffffff" />
+  <rect x="46" y="30" width="8" height="4" rx="1" fill="#ffffff" />
+  <rect x="10" y="30" width="8" height="4" rx="1" fill="#ffffff" />
+  
+  <!-- Diagonal teeth -->
+  <rect x="41.5" y="14.5" width="8" height="4" rx="1" transform="rotate(45 45.5 16.5)" fill="#ffffff" />
+  <rect x="14.5" y="41.5" width="8" height="4" rx="1" transform="rotate(45 18.5 43.5)" fill="#ffffff" />
+  <rect x="14.5" y="14.5" width="8" height="4" rx="1" transform="rotate(-45 18.5 16.5)" fill="#ffffff" />
+  <rect x="41.5" y="41.5" width="8" height="4" rx="1" transform="rotate(-45 45.5 43.5)" fill="#ffffff" />
+  
+  <!-- Stylized letter G -->
+  <path d="M32,28c-2.2,0-4,1.8-4,4s1.8,4,4,4c1.1,0,2.1-0.5,2.8-1.2l-2.8-2.8h4v4l-1.2-1.2C33.7,36,32.4,36.5,31,36.5
+    c-2.5,0-4.5-2-4.5-4.5s2-4.5,4.5-4.5c1.9,0,3.5,1.1,4.2,2.8l1.8-0.9C35.9,26.7,33.7,25,31,25C27.7,25,25,27.7,25,31
+    s2.7,6,6,6c1.6,0,3.1-0.6,4.2-1.7l1.8,1.8V31h-6L32,28z" fill="#ffffff" />
+</svg>

@@ -1,10 +1,158 @@
+/**
+ * GadgetGrove Shop Styles
+ */
+
+/* Base Styles */
 body {
-    background-color: #f8f9fa;
-  }
-  .card-title {
-    font-weight: bold;
-  }
-  .card-text {
-    font-size: 0.9rem;
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    color: #333;
   }
   
+  /* Product Card Styles */
+  .product-card {
+    height: 100%;
+    transition: all 0.2s ease-in-out;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+  }
+  
+  .product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+    border-color: rgba(13, 110, 253, 0.25);
+  }
+  
+  .product-card .card-body {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+  }
+  
+  .product-price {
+    font-size: 1.25rem;
+    font-weight: bold;
+    color: #0d6efd;
+  }
+  
+  .product-brand {
+    font-size: 0.9rem;
+    color: #6c757d;
+    font-weight: 500;
+    margin-bottom: 4px;
+  }
+  
+  .rating {
+    color: #ffc107;
+  }
+  
+  .out-of-stock {
+    color: #dc3545;
+    font-weight: bold;
+  }
+  
+  /* Category Sections */
+  h2 {
+    padding-bottom: 0.5rem;
+    border-bottom: 2px solid #e9ecef;
+    margin-bottom: 1.5rem;
+    position: relative;
+  }
+  
+  h2::after {
+    content: '';
+    position: absolute;
+    bottom: -2px;
+    left: 0;
+    width: 100px;
+    height: 2px;
+    background-color: #0d6efd;
+  }
+  
+  /* Badge Styles */
+  .badge-feature {
+    margin-right: 5px;
+    margin-bottom: 5px;
+    font-weight: 500;
+  }
+  
+  /* Navbar and User Profile */
+  .navbar-brand {
+    font-weight: bold;
+    font-size: 1.5rem;
+  }
+  
+  .user-profile {
+    display: flex;
+    align-items: center;
+  }
+  
+  .user-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    background-color: rgba(255, 255, 255, 0.9);
+    color: #0d6efd;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 10px;
+    font-weight: bold;
+    border: 2px solid rgba(255, 255, 255, 0.5);
+  }
+  
+  /* Cart Styles */
+  #cartCanvas {
+    width: 400px;
+    max-width: 90vw;
+  }
+  
+  .cart-item {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .cart-controls {
+    display: flex;
+    align-items: center;
+  }
+  
+  .quantity-control {
+    width: 50px;
+    text-align: center;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    margin: 0 5px;
+  }
+  
+  .checkout-form {
+    padding: 15px;
+    background-color: #f8f9fa;
+    border-top: 1px solid #dee2e6;
+  }
+  
+  /* Toast Notifications */
+  .toast-container {
+    z-index: 1100;
+  }
+  
+  /* Responsive Adjustments */
+  @media (max-width: 768px) {
+    h2 {
+      font-size: 1.5rem;
+    }
+    
+    .product-card {
+      margin-bottom: 1rem;
+    }
+    
+    .navbar-brand {
+      font-size: 1.2rem;
+    }
+    
+    .user-avatar {
+      width: 35px;
+      height: 35px;
+    }
+  }

@@ -108,11 +108,6 @@ services:
       - .env
     depends_on:
       - postgres-db
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:4200/health"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
 
   prefect-agent:
     image: prefecthq/prefect:3-latest
@@ -155,6 +150,7 @@ services:
         condition: service_started
     volumes:
       - ./webapp:/app
+      - ./prefect:/app/prefect
       - ./data:/app/data
       - logs:/var/log/init
     env_file:
