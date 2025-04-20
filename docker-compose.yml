@@ -14,27 +14,44 @@ services:
       - rabbitmq
       - postgres-db
 
+  # Celery worker for traffic generation tasks
+  celery-traffic:
+    image: gadgetgrove-webapp:latest
+    command: celery -A gadget_celery.app worker --loglevel=info --queues=traffic_generation --concurrency=6
+    volumes:
+      - ./webapp:/app
+      - logs:/var/log/celery-traffic
+    env_file:
+      - .env
+    depends_on:
+      - rabbitmq
+      - webapp
+
+  # Celery worker for data processing tasks
   celery-worker:
     image: gadgetgrove-webapp:latest
-    command: celery -A celery_app.celery_app worker --loglevel=info
+    command: celery -A gadget_celery.app worker --loglevel=info --queues=data_processing --concurrency=4
     volumes:
+      - ./webapp:/app
       - logs:/var/log/celery
     env_file:
       - .env
     depends_on:
       - rabbitmq
 
-  traffic-gen:
+  # Celery beat scheduler to trigger periodic tasks
+  celery-beat:
     image: gadgetgrove-webapp:latest
-    command: python traffic_gen.py
+    command: celery -A gadget_celery.app beat --loglevel=info
     volumes:
       - ./webapp:/app
-      - logs:/var/log/traffic-gen
+      - logs:/var/log/celery-beat
     env_file:
       - .env
     depends_on:
-      - webapp
+      - rabbitmq
 
+  # Raw data consumer for RabbitMQ events
   raw-consumer:
     image: gadgetgrove-webapp:latest
     command: python consumer.py
@@ -44,7 +61,11 @@ services:
       - logs:/var/log/consumer
     env_file:
       - .env
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
 
+  # RabbitMQ server
   rabbitmq:
     image: rabbitmq:3-management
     ports:
@@ -59,6 +80,7 @@ services:
       timeout: 10s
       retries: 5
 
+  # Postgres database
   postgres-db:
     image: postgres:15
     ports:
@@ -83,6 +105,8 @@ services:
       - ./spark/jobs:/opt/spark/jobs
       - data-landing:/data
       - logs:/var/log/spark-master
+    environment:
+      - SPARK_MODE=master
     env_file:
       - .env
 
@@ -93,6 +117,8 @@ services:
     volumes:
       - data-landing:/data
       - logs:/var/log/spark-worker
+    environment:
+      - SPARK_MODE=worker
     env_file:
       - .env
 
@@ -102,7 +128,7 @@ services:
     ports:
       - "4200:4200"
     volumes:
-      - ./prefect:/app
+      - ./prefect:/app/prefect
       - logs:/var/log/prefect-server
     env_file:
       - .env
@@ -117,7 +143,7 @@ services:
     depends_on:
       - prefect-server
     volumes:
-      - ./prefect:/app
+      - ./prefect:/app/prefect
       - data-landing:/data
       - ./spark/jobs:/opt/spark/jobs
       - ./dbt:/opt/dbt
@@ -128,6 +154,7 @@ services:
     build:
       context: ./dbt
     image: dbt-postgres-arm64:latest
+    command: dbt run
     working_dir: /usr/app
     volumes:
       - ./dbt:/usr/app
@@ -136,6 +163,18 @@ services:
       - postgres-db
     env_file:
       - .env
+
+  analytics-dashboard:
+    image: gadgetgrove-webapp:latest
+    command: python dashboard.py
+    ports:
+      - "8050:8050"
+    volumes:
+      - ./webapp:/app
+    env_file:
+      - .env
+    depends_on:
+      - postgres-db
 
   init:
     image: gadgetgrove-webapp:latest

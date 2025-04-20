@@ -9,3 +9,9 @@ pyspark>=3.5
 faker
 jinja2
 python-multipart
+aio-pika
+dash
+dash-bootstrap-components
+plotly
+pandas
+sqlalchemy

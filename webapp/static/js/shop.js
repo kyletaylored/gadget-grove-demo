@@ -36,10 +36,11 @@ document.addEventListener('DOMContentLoaded', function () {
     document.querySelectorAll('.add-to-cart').forEach(button => {
         button.addEventListener('click', function () {
             try {
-                const product = JSON.parse(this.dataset.product);
-                addToCart(product);
-                // Show a quick notification
-                showToast(`${product.name} added to cart`);
+                const productId = this.getAttribute('data-product-id');
+                const productData = window.PRODUCT_DATA[productId];
+                if (productData) {
+                    addToCart(productData);
+                }
             } catch (error) {
                 console.error('Error adding product to cart:', error);
             }

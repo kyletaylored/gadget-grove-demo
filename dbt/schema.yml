@@ -1,0 +1,39 @@
+version: 2
+
+sources:
+  - name: raw_data
+    schema: raw_data
+    tables:
+      - name: page_views
+      - name: user_events
+      - name: ecommerce_events
+      - name: analytics_events
+      - name: events
+
+models:
+  - name: stg_page_views
+    description: "Staged page view events"
+
+  - name: stg_user_events
+    description: "Staged user-related events like identification and logout"
+
+  - name: stg_ecommerce_events
+    description: "Staged e-commerce events (product views, cart actions, purchases)"
+
+  - name: stg_analytics_events
+    description: "Staged generic analytics events"
+
+  - name: product_performance
+    description: "Metrics for product performance including views, conversions, and revenue"
+
+  - name: session_summary
+    description: "Summary of user sessions including behavior and outcomes"
+
+  - name: daily_metrics
+    description: "Daily aggregated metrics for the site"
+
+  - name: user_cohort_analysis
+    description: "User retention and revenue by cohort"
+
+  - name: funnel_analysis
+    description: "Conversion funnel analysis by day"

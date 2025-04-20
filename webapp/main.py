@@ -10,12 +10,35 @@ import json
 import uuid
 import random
 import secrets
+import os
+import aio_pika
+import pika
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
+from contextlib import asynccontextmanager
 
-app = FastAPI()
+# Import the RabbitMQ analytics router
+from rabbitmq_analytics import analytics_router, initialize_rabbitmq, close_rabbitmq
+
+# --- RabbitMQ Connection Events ---
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Startup
+    global rabbitmq_channel
+    rabbitmq_channel = await initialize_rabbitmq()
+    yield
+    # Shutdown
+    await close_rabbitmq()
+
+app = FastAPI(lifespan=lifespan)
 templates = Jinja2Templates(directory="templates")
 app.mount("/static", StaticFiles(directory="static"), name="static")
+
+# Include the analytics router
+app.include_router(analytics_router)
+
 
 # --- Realistic gadget store data ---
 CATEGORIES = {
@@ -80,6 +103,7 @@ class CheckoutRequest(BaseModel):
     email: str
     items: List[CartItem]
     total: float
+    end_session: Optional[bool] = False
 
 
 class UserSession(BaseModel):
@@ -107,11 +131,14 @@ def create_session():
     user_id = str(uuid.uuid4())
     now = datetime.now(UTC)
 
+    name = fake.name()
+    email = name.replace(" ", ".").lower() + "@example.com"
+
     # Create user data
     user_data = {
         "id": user_id,
-        "name": fake.name(),
-        "email": fake.email(),
+        "name": name,
+        "email": email,
         "address": fake.address(),
         "payment_card": fake.credit_card_full(),
         "created_at": now.isoformat(),
@@ -161,16 +188,6 @@ def end_session(session_id: str):
         del USER_SESSIONS[session_id]
         return True
     return False
-
-
-def generate_user(session_id: str = None):
-    """Get user data from session or create new user"""
-    if session_id and session_id in USER_SESSIONS:
-        return USER_SESSIONS[session_id].user_data
-
-    # Create a new session if none exists
-    session = create_session()
-    return session.user_data
 
 
 def generate_product_name(category):
@@ -232,6 +249,7 @@ def generate_product(category):
     cat_data = CATEGORIES[category]
     price_min, price_max = cat_data["price_range"]
     product_id = f"{category[:2].upper()}-{str(uuid.uuid4())[:8]}"
+    brand = random.choice(cat_data["brands"])
 
     # Generate a price point that seems realistic (ending in 9s)
     base_price = round(random.uniform(price_min, price_max) / 10) * 10 - 0.01
@@ -241,7 +259,7 @@ def generate_product(category):
         "name": generate_product_name(category),
         "price": base_price,
         "category": category,
-        "brand": random.choice(cat_data["brands"]),
+        "brand": brand,
         "color": random.choice(cat_data["colors"]),
         "features": generate_product_features(category),
         "rating": round(random.uniform(3.5, 5.0), 1),
@@ -298,6 +316,12 @@ def shop_ui(request: Request, session: UserSession = Depends(get_session)):
     )
 
     return response
+
+
+@app.get("/analytics", response_class=HTMLResponse)
+def analytics_dashboard(request: Request):
+    """Redirect to the analytics dashboard"""
+    return RedirectResponse(url="http://localhost:8050")
 
 
 @app.get("/api/products", response_class=JSONResponse)
@@ -434,12 +458,21 @@ async def checkout(request: Request, session_id: str = Cookie(None, alias=SESSIO
 
 @app.get("/simulate")
 def simulate():
+    """Simulate a user session for analytics events"""
     session_id = str(uuid.uuid4())
     products = generate_products()
     cart = []
     events = []
 
-    events.append({"event_type": "page_view", "path": "/"})
+    # Create page view event
+    events.append({
+        "type": "page_view",
+        "url": f"{os.getenv('WEBAPP_URL', 'http://localhost:8000')}/",
+        "path": "/",
+        "title": "GadgetGrove Shop",
+        "timestamp": datetime.now(UTC).isoformat(),
+        "sessionId": session_id
+    })
 
     # Simulate a user browsing products
     for _ in range(random.randint(2, 6)):
@@ -452,10 +485,29 @@ def simulate():
 
         product = random.choice(category_products)
 
-        events.append({"event_type": "page_view",
-                      "path": f"/category/{category}"})
-        events.append({"event_type": "product_view",
-                      "product_id": product["id"], "product_name": product["name"]})
+        # Category view event
+        events.append({
+            "type": "custom_event",
+            "event": "category_view",
+            "properties": {"category": category},
+            "timestamp": datetime.now(UTC).isoformat(),
+            "sessionId": session_id
+        })
+
+        # Product view event
+        events.append({
+            "type": "custom_event",
+            "event": "product_view",
+            "properties": {
+                "product_id": product["id"],
+                "name": product["name"],
+                "brand": product["brand"],
+                "category": product["category"],
+                "price": product["price"]
+            },
+            "timestamp": datetime.now(UTC).isoformat(),
+            "sessionId": session_id
+        })
 
         if random.random() > 0.3:
             quantity = random.randint(1, 3)
@@ -463,33 +515,105 @@ def simulate():
                 "product": product,
                 "quantity": quantity
             })
+
+            # Add to cart event
             events.append({
-                "event_type": "add_to_cart",
-                "product_id": product["id"],
-                "product_name": product["name"],
-                "quantity": quantity,
-                "value": product["price"] * quantity
+                "type": "custom_event",
+                "event": "add_to_cart",
+                "properties": {
+                    "product_id": product["id"],
+                    "name": product["name"],
+                    "brand": product["brand"],
+                    "category": product["category"],
+                    "price": product["price"],
+                    "quantity": quantity,
+                    "value": product["price"] * quantity
+                },
+                "timestamp": datetime.now(UTC).isoformat(),
+                "sessionId": session_id
             })
-        else:
-            events.append({"event_type": "page_view", "path": "/"})
 
     if cart:
         total = round(sum(item["product"]["price"] *
                       item["quantity"] for item in cart), 2)
-        events.append({"event_type": "begin_checkout",
-                      "cart_value": total, "items_count": len(cart)})
+
+        # Begin checkout event
+        events.append({
+            "type": "custom_event",
+            "event": "begin_checkout",
+            "properties": {
+                "value": total,
+                "items_count": len(cart)
+            },
+            "timestamp": datetime.now(UTC).isoformat(),
+            "sessionId": session_id
+        })
 
         if random.random() > 0.2:
+            # Purchase event
             events.append({
-                "event_type": "purchase",
-                "transaction_id": str(uuid.uuid4()),
-                "value": total,
-                "items": [{"id": item["product"]["id"], "name": item["product"]["name"], "quantity": item["quantity"]} for item in cart]
+                "type": "custom_event",
+                "event": "purchase",
+                "properties": {
+                    "transaction_id": str(uuid.uuid4()),
+                    "value": total,
+                    "items": [{"id": item["product"]["id"], "name": item["product"]["name"], "quantity": item["quantity"]} for item in cart]
+                },
+                "timestamp": datetime.now(UTC).isoformat(),
+                "sessionId": session_id
             })
         else:
+            # Checkout error event
             events.append({
-                "event_type": "checkout_error",
-                "reason": random.choice(["Payment Declined", "Shipping Address Invalid", "Item Out of Stock"])
+                "type": "custom_event",
+                "event": "checkout_error",
+                "properties": {
+                    "reason": random.choice(["Payment Declined", "Shipping Address Invalid", "Item Out of Stock"]),
+                    "value": total
+                },
+                "timestamp": datetime.now(UTC).isoformat(),
+                "sessionId": session_id
             })
 
-    return {"status": "simulated", "session_id": session_id, "events": events}
+        # Save events to legacy queue using synchronous pika
+        if events:
+            try:
+                RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")
+                RABBITMQ_PORT = os.getenv("RABBITMQ_PORT", "5672")
+                connection = pika.BlockingConnection(
+                    pika.ConnectionParameters(host=RABBITMQ_HOST, port=int(RABBITMQ_PORT)))
+                channel = connection.channel()
+
+                # Ensure queues exist
+                default_queue = os.getenv("RABBITMQ_QUEUE", "event_queue")
+                channel.queue_declare(queue=default_queue, durable=True)
+                channel.queue_declare(queue="page_views", durable=True)
+                channel.queue_declare(queue="user_events", durable=True)
+                channel.queue_declare(queue="ecommerce_events", durable=True)
+
+                # Send events to appropriate queues
+                for event in events:
+                    # Determine queue based on event type
+                    queue_name = default_queue
+
+                    if event["type"] == "page_view":
+                        queue_name = "page_views"
+                    elif event["type"] == "custom_event":
+                        if event["event"] in ["identify", "user_engagement", "logout"]:
+                            queue_name = "user_events"
+                        elif event["event"] in ["product_view", "add_to_cart", "purchase", "checkout_error"]:
+                            queue_name = "ecommerce_events"
+
+                    # Send event to RabbitMQ
+                    channel.basic_publish(
+                        exchange='',
+                        routing_key=queue_name,
+                        body=json.dumps(event),
+                        properties=pika.BasicProperties(delivery_mode=2)
+                    )
+
+                connection.close()
+            except Exception as e:
+                print(f"Error sending events to RabbitMQ: {e}")
+
+        return {"status": "simulated", "session_id": session_id, "events": events}

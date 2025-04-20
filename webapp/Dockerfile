@@ -1,8 +1,18 @@
 FROM python:3.11-slim
 
+# Define a non-root user and group
+ARG NB_USER=celeryuser
+ARG NB_UID=1000
+
+# Create the user and group
+RUN adduser --disabled-password \
+    --gecos "" \
+    --uid ${NB_UID} \
+    ${NB_USER}
+
 WORKDIR /app
 
-# Install PostgreSQL client + curl + jq (also used in run.sh)
+# Install PostgreSQL client + curl + jq
 RUN apt-get update && apt-get install -y --no-install-recommends \
     postgresql-client \
     curl \
@@ -18,4 +28,12 @@ RUN --mount=type=cache,target=/root/.cache \
 
 COPY . .
 
+# Change ownership of the application directory to the non-root user
+RUN chown -R ${NB_USER}:${NB_USER} /app
+
+# Switch to the non-root user
+USER ${NB_USER}
+
+# The default CMD is for the web application.
+# This will be overridden in docker-compose for the Celery worker container.
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
