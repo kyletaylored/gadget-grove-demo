@@ -178,3 +178,5 @@ data/*
 
 # Venv directory
 venv/*
+
+.user.yml

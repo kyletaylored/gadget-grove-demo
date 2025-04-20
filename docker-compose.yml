@@ -154,7 +154,7 @@ services:
     build:
       context: ./dbt
     image: dbt-postgres-arm64:latest
-    command: dbt run
+    command: run
     working_dir: /usr/app
     volumes:
       - ./dbt:/usr/app

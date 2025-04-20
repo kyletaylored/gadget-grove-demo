@@ -1,0 +1,17 @@
+version: 2
+
+models:
+  - name: product_performance
+    description: "Metrics for product performance including views, conversions, and revenue"
+
+  - name: session_summary
+    description: "Summary of user sessions including behavior and outcomes"
+
+  - name: daily_metrics
+    description: "Daily aggregated metrics for the site"
+
+  - name: user_cohort_analysis
+    description: "User retention and revenue by cohort"
+
+  - name: funnel_analysis
+    description: "Conversion funnel analysis by day"
