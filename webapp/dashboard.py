@@ -8,6 +8,12 @@ import pandas as pd
 from sqlalchemy import create_engine
 import os
 
+# Datadog tracing
+from ddtrace import patch_all, tracer
+patch_all()
+tracer.set_tags({"service.name": "gadgetgrove-analytics-dashboard"})
+
+
 # Database connection
 POSTGRES_HOST = os.getenv("POSTGRES_HOST", "postgres-db")
 POSTGRES_PORT = os.getenv("POSTGRES_PORT", "5432")

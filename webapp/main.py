@@ -1,3 +1,4 @@
+from rabbitmq_analytics import analytics_router, initialize_rabbitmq, close_rabbitmq
 from pathlib import Path
 from datetime import datetime, UTC, timedelta
 from fastapi import FastAPI, Request, Form, Response, Cookie, Depends
@@ -17,8 +18,13 @@ from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 from contextlib import asynccontextmanager
 
+# Datadog tracing
+from ddtrace import patch_all, tracer
+patch_all()
+tracer.set_tags({"service.name": "gadgetgrove-webapp"})
+
+
 # Import the RabbitMQ analytics router
-from rabbitmq_analytics import analytics_router, initialize_rabbitmq, close_rabbitmq
 
 # --- RabbitMQ Connection Events ---
 

@@ -11,6 +11,10 @@ from datetime import datetime, UTC
 # Ensure your utils.py is accessible, e.g., in the parent directory or same package
 from utils import send_event  # Make sure utils.py is structured correctly
 
+# Datadog tracing
+from ddtrace import patch_all
+patch_all()
+
 # Setup logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

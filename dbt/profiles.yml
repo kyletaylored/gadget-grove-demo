@@ -8,5 +8,5 @@ gadgetgrove:
       password: postgres
       port: 5432
       dbname: events
-      schema: raw_data
+      schema: dbt_default # acts as a fallback, not used
       threads: 2

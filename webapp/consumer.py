@@ -5,6 +5,10 @@ from datetime import datetime, UTC
 from pathlib import Path
 import logging
 
+# Datadog tracing
+from ddtrace import patch_all
+patch_all()
+
 # Set up logging
 logging.basicConfig(
     level=logging.INFO,

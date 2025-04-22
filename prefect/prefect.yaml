@@ -10,7 +10,6 @@ deployments:
       name: "default-agent-pool"
     schedule:
       interval: 120 # every 2 minutes
-    parameters: {}
     tags: [etl, gadgetgrove, spark]
 
   - name: gadgetgrove-dbt-pipeline
@@ -20,5 +19,13 @@ deployments:
       name: "default-agent-pool"
     schedule:
       interval: 120 # every 2 minutes
-    parameters: {}
     tags: [etl, gadgetgrove, dbt]
+
+  - name: gadgetgrove-cleanup-archive
+    version: 1.0.0
+    entrypoint: event_pipeline.py:cleanup_archived_files
+    work_pool:
+      name: "default-agent-pool"
+    schedule:
+      cron: "0 * * * *" # every hour
+    tags: [cleanup, archive, gadgetgrove]

@@ -35,5 +35,8 @@ RUN chown -R ${NB_USER}:${NB_USER} /app
 USER ${NB_USER}
 
 # The default CMD is for the web application.
-# This will be overridden in docker-compose for the Celery worker container.
-CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+# Make sure start.sh is executable
+RUN chmod +x /app/start.sh
+
+# Start both servers
+CMD ["/app/start.sh"]

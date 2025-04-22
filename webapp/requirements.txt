@@ -15,3 +15,5 @@ dash-bootstrap-components
 plotly
 pandas
 sqlalchemy
+ddtrace
+datadog

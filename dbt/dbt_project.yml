@@ -1,3 +1,4 @@
+# dbt_project.yml
 name: gadgetgrove
 version: "1.0"
 config-version: 2
@@ -8,10 +9,14 @@ model-paths: ["models"]
 target-path: "target"
 clean-targets: ["target", "dbt_modules"]
 
+# This disables schema suffixing
 models:
   gadgetgrove:
     +materialized: view
+    +schema: "{{ target.schema }}" # ensures base schema is not overridden
+
     staging:
       +schema: staging
+
     analytics:
       +schema: analytics

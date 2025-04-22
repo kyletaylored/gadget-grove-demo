@@ -3,6 +3,10 @@
 import os
 from celery import Celery
 
+# Datadog tracing
+from ddtrace import patch_all
+patch_all()
+
 # Create the app
 # The first argument 'gadgetgrove' is the main module name, often the package name.
 # The include parameter tells Celery where to find task modules.
