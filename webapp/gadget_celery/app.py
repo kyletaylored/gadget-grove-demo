@@ -35,12 +35,6 @@ app.conf.beat_schedule = {
         'task': 'traffic.schedule_generation',  # Ensure this matches the task name
         'schedule': 60.0,
     },
-    # Example of a task with arguments if needed
-    # 'cleanup-old-files-daily': {
-    #     'task': 'data.cleanup_files',
-    #     'schedule': crontab(hour=0, minute=0), # Requires celery[extra] or kombu
-    #     'args': (14,) # Clean up files older than 14 days
-    # },
 }
 
 # Optional: Other configuration

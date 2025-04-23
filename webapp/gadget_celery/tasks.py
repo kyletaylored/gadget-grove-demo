@@ -110,7 +110,7 @@ def simulate_user_session():
 def schedule_traffic_generation():
     """Schedule periodic traffic generation"""
     # Random number of sessions to generate (1-5)
-    num_sessions = random.randint(1, 5)
+    num_sessions = random.randint(1, 10)
 
     # Generate traffic - schedule the task to run asynchronously
     generate_traffic.delay(num_sessions)

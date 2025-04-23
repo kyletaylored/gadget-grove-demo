@@ -1,0 +1,7 @@
+ddtrace
+prefect
+prefect-dbt
+pandas
+pyspark
+dbt-core==1.9.0
+dbt-postgres==1.9.0

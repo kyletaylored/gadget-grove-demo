@@ -35,7 +35,7 @@ build:
 	$(DC) build $(BUILD_ARGS)
 
 up: build
-	$(DC) up
+	$(DC) up -d
 
 down:
 	$(DC) down

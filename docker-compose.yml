@@ -69,39 +69,6 @@ services:
       com.datadoghq.tags.service: ${DD_SERVICE:-gadgetgrove-celery-traffic}
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
 
-  # Celery worker for data processing tasks
-  celery-worker:
-    image: gadgetgrove-webapp:latest
-    command: ddtrace-run celery -A gadget_celery.app worker --loglevel=info --queues=data_processing --concurrency=4
-    volumes:
-      - ./webapp:/app
-      - logs:/var/log/celery
-    environment:
-      DD_SERVICE: ${DD_SERVICE:-gadgetgrove-celery-worker}
-      DD_VERSION: ${DD_VERSION:-1.0.0}
-      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
-      DD_LOGS_INJECTION: true
-
-      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-
-      POSTGRES_HOST: ${POSTGRES_HOST:-postgres-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-events}
-
-      WEBAPP_URL: ${WEBAPP_URL:-http://webapp:8000}
-      MAX_WORKERS: ${MAX_WORKERS:-10}
-    depends_on:
-      rabbitmq:
-        condition: service_healthy
-    labels:
-      com.datadoghq.ad.logs: '[{"source": "python", "service": "gadgetgrove-celery-worker"}]'
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-gadgetgrove-celery-worker}
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
-
   # Celery beat scheduler to trigger periodic tasks
   celery-beat:
     image: gadgetgrove-webapp:latest
@@ -144,11 +111,6 @@ services:
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
       RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-event_queue}
 
-      POSTGRES_HOST: ${POSTGRES_HOST:-postgres-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-events}
     depends_on:
       rabbitmq:
         condition: service_healthy
