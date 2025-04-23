@@ -9,7 +9,7 @@ deployments:
     work_pool:
       name: "default-agent-pool"
     schedule:
-      interval: 120 # every 2 minutes
+      interval: 60 # every minute
     tags: [etl, gadgetgrove, spark]
 
   - name: gadgetgrove-dbt-pipeline
@@ -27,5 +27,5 @@ deployments:
     work_pool:
       name: "default-agent-pool"
     schedule:
-      cron: "0 * * * *" # every hour
+      cron: "0/15 * * * *" # every 15 minutes
     tags: [cleanup, archive, gadgetgrove]
