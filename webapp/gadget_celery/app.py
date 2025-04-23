@@ -11,7 +11,7 @@ patch_all()
 # The first argument 'gadgetgrove' is the main module name, often the package name.
 # The include parameter tells Celery where to find task modules.
 app = Celery(
-    "gadgetgrove",
+    "gadgetgrove-celery",
     # Tell Celery to load tasks from this module
     include=['gadget_celery.tasks']
 )

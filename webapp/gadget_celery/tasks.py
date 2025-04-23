@@ -12,12 +12,16 @@ from datetime import datetime, UTC
 from utils import send_event  # Make sure utils.py is structured correctly
 
 # Datadog tracing
-from ddtrace import patch_all
+from ddtrace import patch_all, tracer
 patch_all()
 
 # Setup logging
-logging.basicConfig(level=logging.INFO)
+FORMAT = ('%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] '
+          '[dd.service=%(dd.service)s dd.env=%(dd.env)s dd.version=%(dd.version)s dd.trace_id=%(dd.trace_id)s dd.span_id=%(dd.span_id)s] '
+          '- %(message)s')
+logging.basicConfig(format=FORMAT)
 logger = logging.getLogger(__name__)
+logger.level = logging.INFO
 
 # Configuration
 WEBAPP_URL = os.getenv("WEBAPP_URL", "http://webapp:8000")

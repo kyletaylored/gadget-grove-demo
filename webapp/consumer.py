@@ -6,15 +6,16 @@ from pathlib import Path
 import logging
 
 # Datadog tracing
-from ddtrace import patch_all
+from ddtrace import patch_all, tracer
 patch_all()
 
 # Set up logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
+FORMAT = ('%(asctime)s %(levelname)s [%(name)s] [%(filename)s:%(lineno)d] '
+          '[dd.service=%(dd.service)s dd.env=%(dd.env)s dd.version=%(dd.version)s dd.trace_id=%(dd.trace_id)s dd.span_id=%(dd.span_id)s] '
+          '- %(message)s')
+logging.basicConfig(format=FORMAT)
 logger = logging.getLogger(__name__)
+logger.level = logging.INFO
 
 # Configuration
 RABBITMQ_HOST = os.getenv("RABBITMQ_HOST", "rabbitmq")

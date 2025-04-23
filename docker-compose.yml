@@ -13,6 +13,7 @@ services:
       DD_SERVICE: ${DD_SERVICE:-gadgetgrove-webapp}
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_LOGS_INJECTION: true
 
       RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
@@ -46,6 +47,7 @@ services:
       DD_SERVICE: ${DD_SERVICE:-gadgetgrove-celery-traffic}
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_LOGS_INJECTION: true
 
       RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
@@ -78,6 +80,7 @@ services:
       DD_SERVICE: ${DD_SERVICE:-gadgetgrove-celery-worker}
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_LOGS_INJECTION: true
 
       RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
@@ -110,6 +113,8 @@ services:
       DD_SERVICE: ${DD_SERVICE:-gadgetgrove-celery-beat}
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_LOGS_INJECTION: true
+
       RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
     depends_on:
@@ -133,6 +138,7 @@ services:
       DD_SERVICE: ${DD_SERVICE:-gadgetgrove-consumer}
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_LOGS_INJECTION: true
 
       RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
@@ -260,6 +266,7 @@ services:
       SPARK_MODE: master
       SPARK_REST_API_ENABLED: "true"
       SPARK_MASTER_WEBUI_PORT: 8080
+      DD_LOGS_INJECTION: true
     labels:
       com.datadoghq.ad.logs: '[{"source": "spark", "service": "spark-master"}]'
       com.datadoghq.tags.env: ${DD_ENV:-podman}
@@ -271,8 +278,8 @@ services:
             "init_config": {},
             "instances": [
               {
-                "spark_url": "http://%%host%%:8080",
-                "cluster_name": "gadgetgrove"
+                "cluster_name": "gadgetgrove-spark",
+                "spark_url": "%%host%%:8080",
               }
             ]
           }
@@ -286,6 +293,7 @@ services:
       - data-landing:/data
       - logs:/var/log/spark-worker
     environment:
+      DD_LOGS_INJECTION: true
       SPARK_MODE: worker
       SPARK_MASTER_URL: ${SPARK_MASTER_URL:-spark://spark-master:7077}
     labels:
@@ -296,8 +304,8 @@ services:
 
   # Prefect server
   prefect-server:
-    image: prefecthq/prefect:3-latest
-    command: prefect server start
+    image: gadgetgrove-prefect-agent:latest
+    command: ddtrace-run prefect server start
     ports:
       - "4200:4200"
     volumes:
@@ -308,6 +316,7 @@ services:
       DD_SERVICE: ${DD_SERVICE:-prefect-server}
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_LOGS_INJECTION: true
 
       PREFECT_API_URL: ${PREFECT_API_URL:-http://prefect-server:4200/api}
       PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST:-0.0.0.0}
@@ -340,6 +349,7 @@ services:
       DD_SERVICE: ${DD_SERVICE:-prefect-agent}
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_LOGS_INJECTION: true
 
       WORK_POOL: ${WORK_POOL:-default-agent-pool}
       SPARK_MASTER_URL: ${SPARK_MASTER_URL:-spark://spark-master:7077}
@@ -393,7 +403,7 @@ services:
     environment:
       DD_SERVICE: ${DD_SERVICE:-gadgetgrove-init}
       DD_VERSION: ${DD_VERSION:-1.0.0}
-
+      DD_LOGS_INJECTION: true
       WORK_POOL: ${WORK_POOL:-default-agent-pool}
       PREFECT_API_URL: ${PREFECT_API_URL:-http://prefect-server:4200/api}
 
