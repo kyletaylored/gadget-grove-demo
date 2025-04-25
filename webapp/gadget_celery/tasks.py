@@ -12,7 +12,7 @@ from datetime import datetime, UTC
 from utils import send_event  # Make sure utils.py is structured correctly
 
 # Datadog tracing
-from ddtrace import patch_all, tracer
+from ddtrace import patch_all
 patch_all()
 
 # Setup logging
@@ -110,7 +110,7 @@ def simulate_user_session():
 def schedule_traffic_generation():
     """Schedule periodic traffic generation"""
     # Random number of sessions to generate (1-5)
-    num_sessions = random.randint(1, 10)
+    num_sessions = random.randint(1, 5)
 
     # Generate traffic - schedule the task to run asynchronously
     generate_traffic.delay(num_sessions)

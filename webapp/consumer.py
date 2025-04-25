@@ -6,7 +6,7 @@ from pathlib import Path
 import logging
 
 # Datadog tracing
-from ddtrace import patch_all, tracer
+from ddtrace import patch_all
 patch_all()
 
 # Set up logging

@@ -19,7 +19,7 @@ DC := docker compose
 help:
 	@echo "Available targets:"
 	@echo "  make build     - Build all Docker images with Git metadata"
-	@echo "  make up        - Start all services (with rebuild)"
+	@echo "  make up        - Start all services"
 	@echo "  make down      - Stop all services"
 	@echo "  make restart   - Restart services"
 	@echo "  make logs      - Show logs for all services"
@@ -34,7 +34,7 @@ build:
 	@echo "🧪 Datadog Version Tag: $(GIT_SHORT_SHA)"
 	$(DC) build $(BUILD_ARGS)
 
-up: build
+up: 
 	$(DC) up -d
 
 down:

@@ -10,7 +10,7 @@ services:
       - ./webapp:/app
       - logs:/var/log/webapp
     environment:
-      DD_SERVICE: ${DD_SERVICE:-gadgetgrove-webapp}
+      DD_SERVICE: gadgetgrove-webapp
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       DD_LOGS_INJECTION: true
@@ -33,7 +33,7 @@ services:
     labels:
       com.datadoghq.ad.logs: '[{"source": "python", "service": "gadgetgrove-webapp"}]'
       com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-gadgetgrove-webapp}
+      com.datadoghq.tags.service: gadgetgrove-webapp
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
 
   # Celery worker for traffic generation tasks
@@ -44,7 +44,7 @@ services:
       - ./webapp:/app
       - logs:/var/log/celery-traffic
     environment:
-      DD_SERVICE: ${DD_SERVICE:-gadgetgrove-celery-traffic}
+      DD_SERVICE: gadgetgrove-celery-traffic
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       DD_LOGS_INJECTION: true
@@ -66,7 +66,7 @@ services:
     labels:
       com.datadoghq.ad.logs: '[{"source": "python", "service": "gadgetgrove-celery-traffic"}]'
       com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-gadgetgrove-celery-traffic}
+      com.datadoghq.tags.service: gadgetgrove-celery-traffic
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
 
   # Celery beat scheduler to trigger periodic tasks
@@ -77,7 +77,7 @@ services:
       - ./webapp:/app
       - logs:/var/log/celery-beat
     environment:
-      DD_SERVICE: ${DD_SERVICE:-gadgetgrove-celery-beat}
+      DD_SERVICE: gadgetgrove-celery-beat
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       DD_LOGS_INJECTION: true
@@ -90,19 +90,19 @@ services:
     labels:
       com.datadoghq.ad.logs: '[{"source": "python", "service": "gadgetgrove-celery-beat"}]'
       com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-gadgetgrove-celery-beat}
+      com.datadoghq.tags.service: gadgetgrove-celery-beat
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
 
   # Raw data consumer for RabbitMQ events
   raw-consumer:
     image: gadgetgrove-webapp:latest
-    command: ddtrace-run python consumer.py
+    command: ddtrace-run python3 consumer.py
     volumes:
       - ./webapp:/app
       - data-landing:/data/raw
       - logs:/var/log/consumer
     environment:
-      DD_SERVICE: ${DD_SERVICE:-gadgetgrove-consumer}
+      DD_SERVICE: gadgetgrove-consumer
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       DD_LOGS_INJECTION: true
@@ -117,7 +117,7 @@ services:
     labels:
       com.datadoghq.ad.logs: '[{"source": "python", "service": "gadgetgrove-consumer"}]'
       com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-gadgetgrove-consumer}
+      com.datadoghq.tags.service: gadgetgrove-consumer
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
 
   # RabbitMQ server
@@ -137,7 +137,7 @@ services:
     labels:
       com.datadoghq.ad.logs: '[{"source": "rabbitmq", "service": "rabbitmq"}]'
       com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-rabbitmq}
+      com.datadoghq.tags.service: rabbitmq
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
       com.datadoghq.ad.checks: |
         {
@@ -176,9 +176,9 @@ services:
     labels:
       com.datadoghq.ad.logs: '[{"source": "postgresql", "service": "postgres"}]'
       com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-postgres}
+      com.datadoghq.tags.service: postgres
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
-      com.datadoghq.ad.checks: >-
+      com.datadoghq.ad.checks: |
         {
           "postgres": {
             "init_config": {},
@@ -216,7 +216,7 @@ services:
         }
 
   spark-master:
-    image: bitnami/spark:3.5
+    image: bitnami/spark:3.5.5
     ports:
       - "7077:7077"
       - "8080:8080"
@@ -224,6 +224,7 @@ services:
       - ./spark/jobs:/opt/spark/jobs
       - data-landing:/data
       - logs:/var/log/spark-master
+      - ./spark/conf/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
     environment:
       SPARK_MODE: master
       SPARK_REST_API_ENABLED: "true"
@@ -232,9 +233,9 @@ services:
     labels:
       com.datadoghq.ad.logs: '[{"source": "spark", "service": "spark-master"}]'
       com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-spark-master}
+      com.datadoghq.tags.service: spark-master
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
-      com.datadoghq.ad.checks: >-
+      com.datadoghq.ad.checks: |
         {
           "spark": {
             "init_config": {},
@@ -248,20 +249,26 @@ services:
         }
 
   spark-worker:
-    image: bitnami/spark:3.5
+    image: bitnami/spark:3.5.5
     depends_on:
       - spark-master
     volumes:
       - data-landing:/data
       - logs:/var/log/spark-worker
+      - ./spark/conf/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
     environment:
       DD_LOGS_INJECTION: true
       SPARK_MODE: worker
       SPARK_MASTER_URL: ${SPARK_MASTER_URL:-spark://spark-master:7077}
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "2g"
     labels:
       com.datadoghq.ad.logs: '[{"source": "spark", "service": "spark-worker"}]'
       com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-spark-worker}
+      com.datadoghq.tags.service: spark-worker
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
 
   # Prefect server
@@ -290,14 +297,14 @@ services:
       postgres-db:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "ddtrace-run", "python", "/check_api.py"]
+      test: ["CMD", "ddtrace-run", "python3", "/app/prefect/check_api.py"]
       interval: 10s
       timeout: 5s
       retries: 5
     labels:
       com.datadoghq.ad.logs: '[{"source": "prefect", "service": "prefect-server"}]'
       com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-prefect-server}
+      com.datadoghq.tags.service: prefect-server
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
 
   prefect-agent:
@@ -308,7 +315,7 @@ services:
         POSTGRES_JDBC_VERSION: ${POSTGRES_JDBC_VERSION:-42.7.3}
     image: gadgetgrove-prefect-agent:latest
     environment:
-      DD_SERVICE: ${DD_SERVICE:-prefect-agent}
+      DD_SERVICE: prefect-agent
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       DD_LOGS_INJECTION: true
@@ -331,19 +338,22 @@ services:
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
       RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-event_queue}
     depends_on:
-      - prefect-server
+      prefect-server:
+        condition: service_healthy
     volumes:
       - data-landing:/data
       - logs:/var/log/prefect-agent
+      - ./spark/conf/spark-defaults.conf:/opt/bitnami/spark/conf/spark-defaults.conf
     healthcheck:
       test: ["CMD", "echo", "healthy"]
       interval: 30s
       timeout: 10s
       retries: 3
+    restart: on-failure
     labels:
       com.datadoghq.ad.logs: '[{"source": "prefect", "service": "prefect-agent"}]'
       com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-prefect-agent}
+      com.datadoghq.tags.service: prefect-agent
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
 
   init:
@@ -363,7 +373,7 @@ services:
       - ./data:/app/data
       - logs:/var/log/init
     environment:
-      DD_SERVICE: ${DD_SERVICE:-gadgetgrove-init}
+      DD_SERVICE: gadgetgrove-init
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_LOGS_INJECTION: true
       WORK_POOL: ${WORK_POOL:-default-agent-pool}
@@ -383,7 +393,7 @@ services:
       PREFECT_DB: ${PREFECT_DB:-prefect}
     labels:
       com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: ${DD_SERVICE:-gadgetgrove-init}
+      com.datadoghq.tags.service: gadgetgrove-init
       com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
 
   # Datadog Agent
@@ -392,6 +402,17 @@ services:
     pid: "host"
     ports:
       - 5002:5002
+    security_opt:
+      - apparmor:unconfined
+    cap_add:
+      - SYS_ADMIN
+      - SYS_RESOURCE
+      - SYS_PTRACE
+      - NET_ADMIN
+      - NET_BROADCAST
+      - NET_RAW
+      - IPC_LOCK
+      - CHOWN
     volumes:
       - /var/run/datadog:/var/run/datadog
       - /var/run/docker.sock:/var/run/docker.sock:ro
@@ -399,11 +420,14 @@ services:
       - /proc/:/host/proc/:ro
       - /sys/fs/cgroup/:/host/sys/fs/cgroup:ro
       - /etc/os-release:/host/etc/os-release:ro
+      - /etc/passwd:/host/etc/passwd:ro
+      - /etc/group:/host/etc/group:ro
+      - /:/host/root:ro
+      - /sys/kernel/debug:/host/sys/kernel/debug
     environment:
       DD_API_KEY: ${DD_API_KEY}
       DD_SITE: ${DD_SITE:-datadoghq.com}
       DD_ENV: ${DD_ENV:-podman}
-      DD_SERVICE: ${DD_SERVICE:-gadgetgrove}
       DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_HOSTNAME: ${DD_HOSTNAME:-gadgetgrove}
       HOSTNAME: ${HOSTNAME:-gadgetgrove}
@@ -419,7 +443,13 @@ services:
       DD_DOGSTATSD_NON_LOCAL_TRAFFIC: ${DD_DOGSTATSD_NON_LOCAL_TRAFFIC:-true}
       DD_DOGSTATSD_SOCKET: ${DD_DOGSTATSD_SOCKET:-/var/run/datadog/dsd.socket}
       DD_APM_RECEIVER_SOCKET: ${DD_APM_RECEIVER_SOCKET:-/var/run/datadog/apm.socket}
+      DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED: true
       DD_GUI_PORT: 5002
+      DD_COMPLIANCE_CONFIG_ENABLED: true
+      DD_COMPLIANCE_CONFIG_HOST_BENCHMARKS_ENABLED: true
+      DD_RUNTIME_SECURITY_CONFIG_ENABLED: true
+      DD_RUNTIME_SECURITY_CONFIG_REMOTE_CONFIGURATION_ENABLED: true
+      HOST_ROOT: /host/root
     privileged: true
     dns:
       - 8.8.8.8
@@ -429,6 +459,10 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+
+networks:
+  default:
+    name: gadgetgrove-net
 
 volumes:
   data-landing:

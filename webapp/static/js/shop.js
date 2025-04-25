@@ -107,6 +107,10 @@ document.addEventListener('DOMContentLoaded', function () {
             item.id === product.id
         );
 
+        // Track product view for Datadog RUM
+        window.DD_RUM && window.DD_RUM.addAction('add_to_cart', product);
+
+
         if (existingItemIndex >= 0) {
             // Update quantity if product already exists
             cart[existingItemIndex].quantity = (cart[existingItemIndex].quantity || 1) + 1;
@@ -124,25 +128,31 @@ document.addEventListener('DOMContentLoaded', function () {
     /**
      * Remove an item from the cart
      */
-    function removeItem(index) {
+    function removeItem(item, index) {
         cart.splice(index, 1);
         saveCart();
         renderCart();
+
+        // Track product view for Datadog RUM
+        window.DD_RUM && window.DD_RUM.addAction('remove_from_cart', item);
     }
 
     /**
      * Update the quantity of an item
      */
-    function updateQuantity(index, newQuantity) {
+    function updateQuantity(item, index, newQuantity) {
         if (index >= 0 && index < cart.length) {
             newQuantity = parseInt(newQuantity);
 
             if (newQuantity < 1) {
-                removeItem(index);
+                removeItem(item, index);
             } else {
                 cart[index].quantity = newQuantity;
                 saveCart();
                 renderCart();
+
+                // Track product view for Datadog RUM
+                window.DD_RUM && window.DD_RUM.addAction('update_quantity', { ...item, quantity: newQuantity });
             }
         }
     }
@@ -232,7 +242,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 const minusBtn = document.createElement('button');
                 minusBtn.className = 'btn btn-sm btn-outline-secondary';
                 minusBtn.innerHTML = '-';
-                minusBtn.addEventListener('click', () => updateQuantity(index, quantity - 1));
+                minusBtn.addEventListener('click', () => updateQuantity(item, index, quantity - 1));
 
                 // Quantity input
                 const quantityInput = document.createElement('input');
@@ -240,19 +250,19 @@ document.addEventListener('DOMContentLoaded', function () {
                 quantityInput.className = 'quantity-control';
                 quantityInput.min = 1;
                 quantityInput.value = quantity;
-                quantityInput.addEventListener('change', e => updateQuantity(index, e.target.value));
+                quantityInput.addEventListener('change', e => updateQuantity(item, index, e.target.value));
 
                 // Plus button
                 const plusBtn = document.createElement('button');
                 plusBtn.className = 'btn btn-sm btn-outline-secondary';
                 plusBtn.innerHTML = '+';
-                plusBtn.addEventListener('click', () => updateQuantity(index, quantity + 1));
+                plusBtn.addEventListener('click', () => updateQuantity(item, index, quantity + 1));
 
                 // Remove button
                 const removeBtn = document.createElement('button');
                 removeBtn.className = 'btn btn-sm btn-outline-danger ms-2';
                 removeBtn.innerHTML = '×';
-                removeBtn.addEventListener('click', () => removeItem(index));
+                removeBtn.addEventListener('click', () => removeItem(item, index));
 
                 // Add all controls
                 controls.appendChild(minusBtn);
@@ -293,6 +303,10 @@ document.addEventListener('DOMContentLoaded', function () {
      * End current session
      */
     function endSession() {
+        // Track end session for Datadog RUM
+        window.DD_RUM && window.DD_RUM.addAction('end_session');
+        window.DD_RUM && window.DD_RUM.stopSession();
+
         return fetch('/api/session/end', {
             method: 'POST',
             headers: {
@@ -333,6 +347,12 @@ document.addEventListener('DOMContentLoaded', function () {
         const email = document.getElementById('checkout-email')?.value || '';
         const totals = calculateTotals();
 
+        // Track checkout for Datadog RUM
+        window.DD_RUM && window.DD_RUM.addAction('checkout', {
+            name: name,
+            email: email,
+            totals: totals
+        });
         // Check if user wants to end session after checkout
         const endSessionAfterCheckout = document.getElementById('end-session-checkbox')?.checked || false;
 
@@ -572,6 +592,13 @@ document.addEventListener('DOMContentLoaded', function () {
     getSessionInfo().then(sessionInfo => {
         if (sessionInfo) {
             updateSessionUI(sessionInfo);
+
+            // Track user session for Datadog RUM
+            window.DD_RUM && window.DD_RUM.setUser({
+                id: sessionInfo.session_id,
+                name: sessionInfo.user.name,
+                email: sessionInfo.user.email
+            });
 
             // Set up a timer to refresh session UI every minute
             setInterval(() => {

@@ -20,36 +20,47 @@ RETENTION_HOURS = int(os.getenv("ARCHIVE_RETENTION_HOURS", "1"))
 
 @task(retries=2, retry_delay_seconds=10)
 def run_spark_job():
-    """Run the Spark job script and return result and log info."""
     print(f"Running Spark job: {SPARK_SCRIPT}")
     result = subprocess.run(["spark-submit", SPARK_SCRIPT],
                             capture_output=True, text=True)
+
+    print(">>> Spark STDOUT >>>")
     print(result.stdout)
+    print(">>> Spark STDERR >>>")
+    print(result.stderr)
+
     return result
 
 
 @task(retries=2, retry_delay_seconds=10)
 def analyze_spark_output(result) -> dict:
-    """Analyze Spark result and prepare artifact data."""
+    """Parse spark-submit output and return record counts for artifacts."""
     if result.returncode != 0:
-        raise RuntimeError(result.stderr)
+        raise RuntimeError(
+            f"[Spark Job Failed]\n\nSTDOUT:\n{result.stdout}\n\nSTDERR:\n{result.stderr}")
 
-    # TODO: Replace with actual counts loaded during spark job
+    queue_counts = {}
+    total = 0
+
+    for line in result.stdout.splitlines():
+        if "[✓] Processed" in line:
+            parts = line.split("Processed")[1].strip().split(
+                " records for queue: ")
+            if len(parts) == 2:
+                count = int(parts[0])
+                queue = parts[1]
+                queue_counts[queue] = count
+                total += count
+
     return {
         "status": "success",
-        "table_counts": {
-            "page_views": 3421,
-            "user_events": 1980,
-            "ecommerce_events": 875,
-            "analytics_events": 142,
-            "event_queue": 700
-        }
+        "total": total,
+        "counts": queue_counts
     }
 
 
 @task(retries=2, retry_delay_seconds=10)
 def generate_spark_artifacts(analysis: dict):
-    """Generate markdown and table artifacts for Spark results."""
     if analysis["status"] == "success":
         create_markdown_artifact(
             key="spark-status",
@@ -57,12 +68,12 @@ def generate_spark_artifacts(analysis: dict):
             description="Spark job completed successfully"
         )
 
-        rows = [{"Queue": k, "Rows Ingested": v}
-                for k, v in analysis["table_counts"].items()]
+        rows = [{"Queue": queue, "Rows Ingested": count}
+                for queue, count in analysis["counts"].items()]
         create_table_artifact(
             key="spark-ingestion-summary",
             table=rows,
-            description="Summary of rows ingested by queue"
+            description=f"Summary of rows ingested by queue. Total: {analysis['total']}"
         )
 
 
@@ -107,6 +118,11 @@ def cleanup_old_files():
     cutoff = now - timedelta(hours=RETENTION_HOURS)
     deleted_counts = {}
     total_deleted = 0
+
+    if not ARCHIVE_DIR.exists():
+        print(
+            f"[✓] Archive directory {ARCHIVE_DIR} does not exist. Nothing to clean.")
+        return {}, 0
 
     for queue_dir in ARCHIVE_DIR.iterdir():
         if not queue_dir.is_dir():

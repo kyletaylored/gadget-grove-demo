@@ -5,7 +5,7 @@ psycopg2-binary
 celery
 requests
 prefect>=3
-pyspark>=3.5
+pyspark>=3.5.5
 faker
 jinja2
 python-multipart

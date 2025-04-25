@@ -1,10 +1,6 @@
-# Updated process_logs.py with artifact reporting, env-configurable JDBC version,
-# file archiving, and hooks for data cleanup
-
 from pyspark.sql import SparkSession
-from pyspark.sql.functions import col, to_timestamp, lit, current_timestamp
 from pyspark.sql.types import StructType, StructField, StringType, MapType
-from prefect.artifacts import create_markdown_artifact
+from pyspark.sql.functions import col, to_timestamp, lit, current_timestamp, to_json
 import os
 import shutil
 from pathlib import Path
@@ -38,14 +34,14 @@ BASE_SCHEMA = StructType([
     StructField("path", StringType(), True),
     StructField("properties", MapType(StringType(), StringType()), True),
     StructField("_queue", StringType(), True),
-    StructField("_processed_at", StringType(), True)
+    StructField("_processed_at", StringType(), True),
+    StructField("_corrupt_record", StringType(), True),
 ])
 
 
 def archive_files(queue_dir: Path):
     archive_path = ARCHIVE_DIR / queue_dir.name
     archive_path.mkdir(parents=True, exist_ok=True)
-
     for file in queue_dir.glob("**/*.json"):
         relative = file.relative_to(queue_dir)
         dest = archive_path / relative
@@ -61,40 +57,50 @@ def process_queue_data(spark, queue_name):
         print(f"[!] No directory for queue: {queue_name}")
         return 0
 
-    df = spark.read.schema(BASE_SCHEMA).json(json_path)
+    df = spark.read \
+        .option("mode", "PERMISSIVE") \
+        .option("columnNameOfCorruptRecord", "_corrupt_record") \
+        .schema(BASE_SCHEMA) \
+        .json(json_path)
+
+    df = df.filter(col("_corrupt_record").isNull())
+    if "_corrupt_record" in df.columns:
+        df = df.drop("_corrupt_record")
+
+    print("[DEBUG] Schema:")
+    df.printSchema()
+    print("[DEBUG] Sample:")
+    df.show(5, truncate=False)
 
     if df.rdd.isEmpty():
-        print(f"[!] No records in queue: {queue_name}")
+        print(f"[!] No valid records in {queue_name}")
         return 0
 
     df = df.withColumn("processed_timestamp", current_timestamp()) \
-           .withColumn("timestamp", to_timestamp(col("timestamp"))) \
-           .withColumn("server_timestamp", to_timestamp(col("server_timestamp"))) \
-           .withColumn("queue_name", lit(queue_name))
+        .withColumn("timestamp", to_timestamp(col("timestamp"))) \
+        .withColumn("server_timestamp", to_timestamp(col("server_timestamp"))) \
+        .withColumn("queue_name", lit(queue_name)) \
+        .withColumn("properties", to_json(col("properties"))) \
+        .withColumn("session_id", col("sessionId")).drop("sessionId") \
+        .withColumn("user_id", col("userId")).drop("userId")
 
     table_name = f"raw_data.{queue_name.replace('-', '_')}"
-
-    df.write \
-      .format("jdbc") \
-      .option("url", POSTGRES_URL) \
-      .option("dbtable", table_name) \
-      .option("user", POSTGRES_USER) \
-      .option("password", POSTGRES_PASSWORD) \
-      .option("driver", "org.postgresql.Driver") \
-      .mode("append") \
-      .save()
-
     count = df.count()
-    print(f"[✓] Wrote {count} records to {table_name}")
 
-    queue_artifact_name = queue_name.replace('_', '-')
+    if count > 0:
+        df.write \
+          .format("jdbc") \
+          .option("url", POSTGRES_URL) \
+          .option("dbtable", table_name) \
+          .option("user", POSTGRES_USER) \
+          .option("password", POSTGRES_PASSWORD) \
+          .option("driver", "org.postgresql.Driver") \
+          .mode("append") \
+          .save()
 
-    archive_files(queue_dir)
-    create_markdown_artifact(
-        key=f"spark-{queue_artifact_name}",
-        markdown=f"### Processed `{count}` records for `{queue_name}`",
-        description=f"Spark ingestion for queue: {queue_name}"
-    )
+        print(f"[✓] Inserted {count} records to {table_name}")
+        archive_files(queue_dir)
+
     return count
 
 
@@ -102,8 +108,10 @@ def main():
     spark = SparkSession.builder \
         .appName("Process RabbitMQ Event Data") \
         .master(SPARK_MASTER) \
-        .config("spark.jars.packages", f"org.postgresql:postgresql:{POSTGRES_JDBC_VERSION}") \
+        .config("spark.jars", "/opt/bitnami/spark/jars/postgresql.jar") \
         .getOrCreate()
+
+    spark.sparkContext.setLogLevel("WARN")
 
     queues = ["page_views", "user_events",
               "ecommerce_events", "analytics_events", "event_queue"]
@@ -111,17 +119,11 @@ def main():
 
     for q in queues:
         try:
-            count = process_queue_data(spark, q)
-            total += count
+            total += process_queue_data(spark, q)
         except Exception as e:
             print(f"[X] Error processing {q}: {e}")
 
-    create_markdown_artifact(
-        key="spark-total",
-        markdown=f"## Spark Job Summary\nTotal records processed: **{total}**",
-        description="Total records processed in Spark job"
-    )
-
+    print(f"[✓] Total processed: {total}")
     spark.stop()
 
 
