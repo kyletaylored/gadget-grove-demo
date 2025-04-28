@@ -12,23 +12,23 @@ services:
     environment:
       DD_SERVICE: gadgetgrove-webapp
       DD_VERSION: ${IMAGE_TAG:-latest}
-      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_AGENT_HOST: ${DD_AGENT_HOST}
       DD_LOGS_INJECTION: true
       DD_RUM_CLIENT_TOKEN: ${DD_RUM_CLIENT_TOKEN}
       DD_RUM_APPLICATION_ID: ${DD_RUM_APPLICATION_ID}
       DD_RUM_SITE: ${DD_RUM_SITE}
 
-      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-event_queue}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE}
 
-      POSTGRES_HOST: ${POSTGRES_HOST:-postgres-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-events}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
 
-      WEBAPP_URL: ${WEBAPP_URL:-http://webapp:8000}
+      WEBAPP_URL: ${WEBAPP_URL}
       MAX_WORKERS: ${MAX_WORKERS:-10}
     depends_on:
       - rabbitmq
@@ -53,19 +53,19 @@ services:
     environment:
       DD_SERVICE: gadgetgrove-celery-traffic
       DD_VERSION: ${IMAGE_TAG:-latest}
-      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_AGENT_HOST: ${DD_AGENT_HOST}
       DD_LOGS_INJECTION: true
 
-      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
 
-      POSTGRES_HOST: ${POSTGRES_HOST:-postgres-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-events}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
 
-      WEBAPP_URL: ${WEBAPP_URL:-http://webapp:8000}
+      WEBAPP_URL: ${WEBAPP_URL}
       MAX_WORKERS: ${MAX_WORKERS:-10}
     depends_on:
       rabbitmq:
@@ -92,11 +92,11 @@ services:
     environment:
       DD_SERVICE: gadgetgrove-celery-beat
       DD_VERSION: ${IMAGE_TAG:-latest}
-      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_AGENT_HOST: ${DD_AGENT_HOST}
       DD_LOGS_INJECTION: true
 
-      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
     depends_on:
       rabbitmq:
         condition: service_healthy
@@ -121,12 +121,12 @@ services:
     environment:
       DD_SERVICE: gadgetgrove-consumer
       DD_VERSION: ${IMAGE_TAG:-latest}
-      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_AGENT_HOST: ${DD_AGENT_HOST}
       DD_LOGS_INJECTION: true
 
-      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-event_queue}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE}
 
     depends_on:
       rabbitmq:
@@ -186,11 +186,11 @@ services:
       - ./postgres/custom.conf:/etc/postgresql/postgresql.conf:ro
       - ./postgres/init-scripts:/docker-entrypoint-initdb.d
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-events}
-      DATADOG_PG_PASSWORD: ${DATADOG_PG_PASSWORD:-datadog_password}
-      PREFECT_DB: ${PREFECT_DB:-prefect}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+      DATADOG_PG_PASSWORD: ${DATADOG_PG_PASSWORD}
+      PREFECT_DB: ${PREFECT_DB}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
@@ -247,9 +247,9 @@ services:
       postgres-db:
         condition: service_healthy
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      PREFECT_DB: ${PREFECT_DB:-prefect}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      PREFECT_DB: ${PREFECT_DB}
     labels:
       com.datadoghq.ad.logs: '[{"source": "postgresql", "service": "wait-for-prefect-db"}]'
       com.datadoghq.tags.service: wait-for-prefect-db
@@ -269,7 +269,7 @@ services:
       SPARK_REST_API_ENABLED: "true"
       SPARK_MASTER_WEBUI_PORT: 8080
       DD_LOGS_INJECTION: true
-      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_AGENT_HOST: ${DD_AGENT_HOST}
     deploy:
       resources:
         limits:
@@ -301,8 +301,8 @@ services:
     environment:
       DD_LOGS_INJECTION: true
       SPARK_MODE: worker
-      SPARK_MASTER_URL: ${SPARK_MASTER_URL:-spark://spark-master:7077}
-      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      SPARK_MASTER_URL: ${SPARK_MASTER_URL}
+      DD_AGENT_HOST: ${DD_AGENT_HOST}
     deploy:
       resources:
         limits:
@@ -325,14 +325,15 @@ services:
     environment:
       DD_SERVICE: prefect-server
       DD_VERSION: ${IMAGE_TAG:-latest}
-      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_AGENT_HOST: ${DD_AGENT_HOST}
       DD_LOGS_INJECTION: true
 
-      PREFECT_API_URL: ${PREFECT_API_URL:-http://prefect-server:4200/api}
-      PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST:-0.0.0.0}
-      PREFECT_UI_API_URL: ${PREFECT_UI_API_URL:-http://localhost:4200/api}
-      PREFECT_API_DATABASE_CONNECTION_URL: ${PREFECT_API_DATABASE_CONNECTION_URL:-postgresql+asyncpg://postgres:postgres@postgres-db:5432/prefect}
-      PREFECT_DB: ${PREFECT_DB:-prefect}
+      PREFECT_API_URL: ${PREFECT_API_URL}
+      PREFECT_SERVER_API_HOST: ${PREFECT_SERVER_API_HOST}
+      PREFECT_UI_API_URL: ${PREFECT_UI_API_URL}
+      PREFECT_API_DATABASE_CONNECTION_URL: ${PREFECT_API_DATABASE_CONNECTION_URL}
+      PREFECT_DB: ${PREFECT_DB}
+      PREFECT_LOGGING_FORMATTERS_JSON_FORMAT: ${PREFECT_LOGGING_FORMATTERS_JSON_FORMAT}
 
     depends_on:
       wait-for-prefect-db:
@@ -358,29 +359,29 @@ services:
       context: .
       dockerfile: ./prefect/agent.Dockerfile
       args:
-        POSTGRES_JDBC_VERSION: ${POSTGRES_JDBC_VERSION:-42.7.3}
+        POSTGRES_JDBC_VERSION: ${POSTGRES_JDBC_VERSION}
     environment:
       DD_SERVICE: prefect-agent
       DD_VERSION: ${IMAGE_TAG:-latest}
-      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+      DD_AGENT_HOST: ${DD_AGENT_HOST}
       DD_LOGS_INJECTION: true
 
-      WORK_POOL: ${WORK_POOL:-default-agent-pool}
-      SPARK_MASTER_URL: ${SPARK_MASTER_URL:-spark://spark-master:7077}
-      SPARK_SCRIPT: ${SPARK_SCRIPT:-/opt/spark/jobs/process_logs.py}
-      PREFECT_API_URL: ${PREFECT_API_URL:-http://prefect-server:4200/api}
+      WORK_POOL: ${WORK_POOL}
+      SPARK_MASTER_URL: ${SPARK_MASTER_URL}
+      SPARK_SCRIPT: ${SPARK_SCRIPT}
+      PREFECT_API_URL: ${PREFECT_API_URL}
 
-      DBT_PROFILES_DIR: ${DBT_PROFILES_DIR:-/opt/dbt}
+      DBT_PROFILES_DIR: ${DBT_PROFILES_DIR}
 
-      POSTGRES_HOST: ${POSTGRES_HOST:-postgres-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-events}
+      POSTGRES_HOST: ${POSTGRES_HOST}
+      POSTGRES_PORT: ${POSTGRES_PORT}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
 
-      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-event_queue}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE}
     depends_on:
       prefect-server:
         condition: service_healthy
@@ -424,13 +425,13 @@ services:
       DD_SERVICE: gadgetgrove-init
       DD_VERSION: ${IMAGE_TAG:-latest}
       DD_LOGS_INJECTION: true
-      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
-      WORK_POOL: ${WORK_POOL:-default-agent-pool}
-      PREFECT_API_URL: ${PREFECT_API_URL:-http://prefect-server:4200/api}
+      DD_AGENT_HOST: ${DD_AGENT_HOST}
+      WORK_POOL: ${WORK_POOL}
+      PREFECT_API_URL: ${PREFECT_API_URL}
 
-      RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
-      RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
-      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-event_queue}
+      RABBITMQ_HOST: ${RABBITMQ_HOST}
+      RABBITMQ_PORT: ${RABBITMQ_PORT}
+      RABBITMQ_QUEUE: ${RABBITMQ_QUEUE}
     deploy:
       resources:
         limits:
@@ -472,10 +473,10 @@ services:
     environment:
       #  Agent configuration
       DD_API_KEY: ${DD_API_KEY}
-      DD_SITE: ${DD_SITE:-datadoghq.com}
-      DD_ENV: ${DD_ENV:-podman}
-      DD_HOSTNAME: ${DD_HOSTNAME:-gadgetgrove}
-      HOSTNAME: ${HOSTNAME:-gadgetgrove}
+      DD_SITE: ${DD_SITE}
+      DD_ENV: ${DD_ENV}
+      DD_HOSTNAME: ${DD_HOSTNAME}
+      HOSTNAME: ${HOSTNAME}
       DD_HOSTNAME_TRUST_UTS_NAMESPACE: true
 
       #  Logs configuration
@@ -490,10 +491,10 @@ services:
       DD_APM_ENABLED: true
       DD_PROFILING_ENABLED: true
       DD_RUNTIME_METRICS_ENABLED: true
-      DD_APM_NON_LOCAL_TRAFFIC: ${DD_APM_NON_LOCAL_TRAFFIC:-true}
-      DD_DOGSTATSD_NON_LOCAL_TRAFFIC: ${DD_DOGSTATSD_NON_LOCAL_TRAFFIC:-true}
-      DD_DOGSTATSD_SOCKET: ${DD_DOGSTATSD_SOCKET:-/var/run/datadog/dsd.socket}
-      DD_APM_RECEIVER_SOCKET: ${DD_APM_RECEIVER_SOCKET:-/var/run/datadog/apm.socket}
+      DD_APM_NON_LOCAL_TRAFFIC: ${DD_APM_NON_LOCAL_TRAFFIC}
+      DD_DOGSTATSD_NON_LOCAL_TRAFFIC: ${DD_DOGSTATSD_NON_LOCAL_TRAFFIC}
+      DD_DOGSTATSD_SOCKET: ${DD_DOGSTATSD_SOCKET}
+      DD_APM_RECEIVER_SOCKET: ${DD_APM_RECEIVER_SOCKET}
 
     privileged: true
     dns:
