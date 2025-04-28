@@ -5,29 +5,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>GadgetGrove Shop</title>
     <link rel="icon" href="/static/img/favicon.ico" type="image/x-icon" />
-    <script
-      src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum.js"
-      type="text/javascript"
-    ></script>
+    <script src="https://www.datadoghq-browser-agent.com/us1/v6/datadog-rum.js"></script>
     <script>
-      window.DD_RUM &&
-        window.DD_RUM.init({
-          clientToken: "pubb9dc2b6f6e2bb898d8e66c1656dba08a",
-          applicationId: "d4777a7f-9a7c-4a06-a76a-ab2414e064ac",
-          site: "datadoghq.com",
-          service: "gadget-grove-web-ui",
-          env: "podman",
-          version: "1.0.1",
-          sessionSampleRate: 100,
-          sessionReplaySampleRate: 100,
-          defaultPrivacyLevel: "mask-user-input",
-          allowedTracingUrls: [
-            "localhost",
-            "127.0.0.1",
-            (url) => url.length > 0,
-          ],
-        });
+      window.dd_rum_config = {
+        clientToken: "{{ dd_rum_client_token }}",
+        applicationId: "{{ dd_rum_application_id }}",
+        site: "{{ dd_rum_site }}",
+      };
     </script>
+    <script src="/static/js/datadog.js"></script>
     <link
       href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
       rel="stylesheet"
@@ -37,6 +23,7 @@
       rel="stylesheet"
     />
     <link href="/static/css/style.css" rel="stylesheet" />
+    <link href="/static/css/spa.css" rel="stylesheet" />
 
     <!-- Analytics meta tags -->
     <meta name="session-id" content="{{ session_id }}" />
@@ -47,7 +34,7 @@
   <body class="bg-light">
     <nav class="navbar navbar-expand-lg navbar-dark bg-primary sticky-top mb-4">
       <div class="container">
-        <a class="navbar-brand" href="#">GadgetGrove</a>
+        <a class="navbar-brand" href="#" data-route="/">GadgetGrove</a>
         <button
           class="navbar-toggler"
           type="button"
@@ -59,11 +46,14 @@
         <div class="collapse navbar-collapse" id="navbarNav">
           <ul class="navbar-nav me-auto">
             <li class="nav-item">
-              <a class="nav-link active" href="#all-products">All Products</a>
+              <a class="nav-link" href="#" data-route="/">Home</a>
             </li>
             {% for cat in categories %}
             <li class="nav-item">
-              <a class="nav-link" href="#{{ cat | lower | replace(' ', '-') }}"
+              <a
+                class="nav-link"
+                href="#"
+                data-route="/category/{{ cat | lower | replace(' ', '-') }}"
                 >{{ cat }}</a
               >
             </li>
@@ -96,7 +86,7 @@
       </div>
     </nav>
 
-    <div class="container">
+    <div class="container" id="app-container">
       <div class="row mb-4">
         <div class="col-12">
           <div class="alert alert-info">
@@ -116,74 +106,214 @@
         </div>
       </div>
 
-      <div id="all-products">
-        {% for category in categories %}
-        <div id="{{ category | lower | replace(' ', '-') }}" class="mb-5">
-          <h2 class="mb-4">{{ category }}</h2>
-          <div class="row">
-            {% for product in products if product.category == category %}
-            <div class="col-md-4 mb-4">
-              <div
-                class="card product-card shadow-sm h-100"
-                data-product-id="{{ product.id }}"
-              >
-                <div class="card-body d-flex flex-column">
-                  <div class="product-brand">{{ product.brand }}</div>
+      <!-- Home page view -->
+      <div id="home-view" class="page-view">
+        <div class="row mb-4">
+          <div class="col-12">
+            <h1 class="display-5">Welcome to GadgetGrove</h1>
+            <p class="lead">
+              Discover the latest tech gadgets across all our categories
+            </p>
+          </div>
+        </div>
+
+        <div class="row">
+          {% for category in categories %}
+          <div class="col-md-4 mb-4">
+            <div class="card category-card shadow-sm h-100">
+              <div class="card-body">
+                <h3 class="card-title">{{ category }}</h3>
+                <p class="card-text">Explore our {{ category }} collection</p>
+                <a
+                  href="#"
+                  class="btn btn-primary stretched-link"
+                  data-route="/category/{{ category | lower | replace(' ', '-') }}"
+                >
+                  Browse {{ category }}
+                </a>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+
+      <!-- Category views -->
+      {% for category in categories %}
+      <div
+        id="category-{{ category | lower | replace(' ', '-') }}-view"
+        class="page-view"
+        style="display: none"
+      >
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#" data-route="/">Home</a></li>
+            <li class="breadcrumb-item active">{{ category }}</li>
+          </ol>
+        </nav>
+
+        <h2 class="mb-4">{{ category }}</h2>
+        <div class="row">
+          {% for product in products if product.category == category %}
+          <div class="col-md-4 mb-4">
+            <div class="card product-card shadow-sm h-100">
+              <div class="card-body d-flex flex-column">
+                <div class="product-brand">{{ product.brand }}</div>
+                <a
+                  href="#"
+                  class="product-link"
+                  data-route="/category/{{ product.category | lower | replace(' ', '-') }}/product/{{ product.id }}"
+                >
                   <h5 class="card-title">{{ product.name }}</h5>
+                </a>
 
-                  <div class="mb-2">
-                    {% for i in range(5) %} {% if i < product.rating|int %}
-                    <span class="rating">★</span>
-                    {% elif i < product.rating %}
-                    <span class="rating">★</span>
-                    {% else %}
-                    <span class="rating" style="color: #e0e0e0">★</span>
-                    {% endif %} {% endfor %}
-                    <span class="ms-1 text-muted">({{ product.rating }})</span>
-                  </div>
+                <div class="mb-2">
+                  {% for i in range(5) %} {% if i < product.rating|int %}
+                  <span class="rating">★</span>
+                  {% elif i < product.rating %}
+                  <span class="rating">★</span>
+                  {% else %}
+                  <span class="rating" style="color: #e0e0e0">★</span>
+                  {% endif %} {% endfor %}
+                  <span class="ms-1 text-muted">({{ product.rating }})</span>
+                </div>
 
-                  <p class="card-text">
-                    <span class="product-price"
-                      >${{ "%.2f"|format(product.price) }}</span
-                    ><br />
-                    <span class="text-muted">Color: {{ product.color }}</span
-                    ><br />
+                <p class="card-text">
+                  <span class="product-price"
+                    >${{ "%.2f"|format(product.price) }}</span
+                  ><br />
+                  <span class="text-muted">Color: {{ product.color }}</span
+                  ><br />
+                </p>
 
-                    {% if product.features %} {% for key, value in
-                    product.features.items() %} {% if value is string %}
-                    <span class="badge bg-light text-dark badge-feature"
-                      >{{ key }}: {{ value }}</span
-                    >
-                    {% elif value is iterable and value is not string %} {% for
-                    item in value %}
-                    <span class="badge bg-light text-dark badge-feature"
-                      >{{ item }}</span
-                    >
-                    {% endfor %} {% endif %} {% endfor %} {% endif %}
-                  </p>
+                <div class="mt-auto">
+                  {% if product.in_stock %}
+                  <button
+                    class="btn btn-outline-primary w-100 add-to-cart"
+                    data-product-id="{{ product.id }}"
+                  >
+                    Add to Cart
+                  </button>
+                  {% else %}
+                  <button class="btn btn-outline-secondary w-100" disabled>
+                    <span class="out-of-stock">Out of Stock</span>
+                  </button>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+      {% endfor %}
 
-                  <div class="mt-auto">
+      <!-- Product detail views -->
+      {% for product in products %}
+      <div
+        id="product-{{ product.id }}-view"
+        class="page-view"
+        style="display: none"
+      >
+        <nav aria-label="breadcrumb">
+          <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="#" data-route="/">Home</a></li>
+            <li class="breadcrumb-item">
+              <a
+                href="#"
+                data-route="/category/{{ product.category | lower | replace(' ', '-') }}"
+                >{{ product.category }}</a
+              >
+            </li>
+            <li class="breadcrumb-item active">{{ product.name }}</li>
+          </ol>
+        </nav>
+
+        <div class="row">
+          <div class="col-md-8 offset-md-2">
+            <div class="card product-detail-card">
+              <div class="card-body">
+                <div class="product-brand">{{ product.brand }}</div>
+                <h2 class="product-title mb-3">{{ product.name }}</h2>
+
+                <div class="mb-3">
+                  {% for i in range(5) %} {% if i < product.rating|int %}
+                  <span class="rating">★</span>
+                  {% elif i < product.rating %}
+                  <span class="rating">★</span>
+                  {% else %}
+                  <span class="rating" style="color: #e0e0e0">★</span>
+                  {% endif %} {% endfor %}
+                  <span class="ms-1 text-muted">({{ product.rating }})</span>
+                </div>
+
+                <div class="row mb-4">
+                  <div class="col-md-6">
+                    <div class="product-price-container mb-3">
+                      <h3 class="product-price">
+                        ${{ "%.2f"|format(product.price) }}
+                      </h3>
+                      {% if product.in_stock %}
+                      <span class="badge bg-success">In Stock</span>
+                      {% else %}
+                      <span class="badge bg-danger">Out of Stock</span>
+                      {% endif %}
+                    </div>
+
+                    <p><strong>Color:</strong> {{ product.color }}</p>
+
                     {% if product.in_stock %}
                     <button
-                      class="btn btn-outline-primary w-100 add-to-cart"
+                      class="btn btn-primary btn-lg add-to-cart"
                       data-product-id="{{ product.id }}"
                     >
                       Add to Cart
                     </button>
                     {% else %}
-                    <button class="btn btn-outline-secondary w-100" disabled>
-                      <span class="out-of-stock">Out of Stock</span>
+                    <button class="btn btn-secondary btn-lg" disabled>
+                      Out of Stock
                     </button>
                     {% endif %}
                   </div>
+
+                  <div class="col-md-6">
+                    <div class="product-features">
+                      <h4>Features</h4>
+                      <ul class="list-unstyled">
+                        {% if product.features %} {% for key, value in
+                        product.features.items() %} {% if value is string %}
+                        <li><strong>{{ key }}:</strong> {{ value }}</li>
+                        {% elif value is iterable and value is not string %}
+                        <li>
+                          <strong>{{ key }}:</strong>
+                          <ul>
+                            {% for item in value %}
+                            <li>{{ item }}</li>
+                            {% endfor %}
+                          </ul>
+                        </li>
+                        {% endif %} {% endfor %} {% endif %}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div class="product-description">
+                  <h4>Product Description</h4>
+                  <p>
+                    Experience the cutting-edge technology with the {{
+                    product.name }}. This {{ product.category | lower }}
+                    delivers outstanding performance and reliability.
+                  </p>
+
+                  <p>Perfect for tech enthusiasts and everyday users alike.</p>
                 </div>
               </div>
             </div>
-            {% endfor %}
           </div>
         </div>
-        {% endfor %}
       </div>
+      {% endfor %}
     </div>
 
     <!-- Cart UI -->
@@ -426,5 +556,8 @@
     <!-- Custom Analytics Plugins -->
     <script src="/static/js/rabbitmq-analytics.js"></script>
     <script src="/static/js/analytics.js"></script>
+
+    <!-- SPA Routing JavaScript -->
+    <script src="/static/js/spa-router.js"></script>
   </body>
 </html>

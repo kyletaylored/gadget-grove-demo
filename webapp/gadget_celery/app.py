@@ -33,7 +33,7 @@ app.conf.task_routes = {
 app.conf.beat_schedule = {
     'generate-traffic-every-minute': {
         'task': 'traffic.schedule_generation',  # Ensure this matches the task name
-        'schedule': 60.0,
+        'schedule': 120.0,
     },
 }
 

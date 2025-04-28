@@ -6,83 +6,95 @@ echo "Initializing GadgetGrove system..."
 # 1. Create PostgreSQL schemas
 echo "Creating PostgreSQL schemas in database '$POSTGRES_DB'..."
 PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -p "$POSTGRES_PORT" <<EOF
+-- drop_tables.sql
+
+-- Drops all raw_data tables cleanly before recreation
+DROP SCHEMA IF EXISTS raw_data CASCADE;
+DROP SCHEMA IF EXISTS staging CASCADE;
+DROP SCHEMA IF EXISTS analytics CASCADE;
+
+-- Recreate the schemas
 CREATE SCHEMA IF NOT EXISTS raw_data;
 CREATE SCHEMA IF NOT EXISTS staging;
 CREATE SCHEMA IF NOT EXISTS analytics;
 
--- Create tables for raw data
-CREATE TABLE IF NOT EXISTS raw_data.page_views (
-  id SERIAL PRIMARY KEY,
-  type VARCHAR(255),
-  timestamp TIMESTAMP,
-  server_timestamp TIMESTAMP,
-  session_id VARCHAR(255),
-  user_id VARCHAR(255),
-  client_ip VARCHAR(50),
-  user_agent TEXT,
-  url TEXT,
-  path TEXT,
-  properties JSONB,
-  queue_name VARCHAR(100),
-  processed_timestamp TIMESTAMP
+-- Create fresh raw_data tables matching Spark output
+
+CREATE TABLE raw_data.page_views (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(255),
+    timestamp TIMESTAMPTZ,
+    server_timestamp TIMESTAMPTZ,
+    session_id VARCHAR(255),
+    user_id VARCHAR(255),
+    client_ip VARCHAR(50),
+    user_agent TEXT,
+    url TEXT,
+    path TEXT,
+    properties JSONB,
+    queue_name VARCHAR(100),
+    processed_timestamp TIMESTAMPTZ
 );
 
-CREATE TABLE IF NOT EXISTS raw_data.user_events (
-  id SERIAL PRIMARY KEY,
-  type VARCHAR(255),
-  event VARCHAR(255),
-  timestamp TIMESTAMP,
-  server_timestamp TIMESTAMP,
-  session_id VARCHAR(255),
-  user_id VARCHAR(255),
-  client_ip VARCHAR(50),
-  user_agent TEXT,
-  properties JSONB,
-  queue_name VARCHAR(100),
-  processed_timestamp TIMESTAMP
+CREATE TABLE raw_data.user_events (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(255),
+    event VARCHAR(255),
+    timestamp TIMESTAMPTZ,
+    server_timestamp TIMESTAMPTZ,
+    session_id VARCHAR(255),
+    user_id VARCHAR(255),
+    client_ip VARCHAR(50),
+    user_agent TEXT,
+    properties JSONB,
+    queue_name VARCHAR(100),
+    processed_timestamp TIMESTAMPTZ
 );
 
-CREATE TABLE IF NOT EXISTS raw_data.ecommerce_events (
-  id SERIAL PRIMARY KEY,
-  type VARCHAR(255),
-  event VARCHAR(255),
-  timestamp TIMESTAMP,
-  server_timestamp TIMESTAMP,
-  session_id VARCHAR(255),
-  user_id VARCHAR(255),
-  client_ip VARCHAR(50),
-  user_agent TEXT,
-  properties JSONB,
-  queue_name VARCHAR(100),
-  processed_timestamp TIMESTAMP
+CREATE TABLE raw_data.ecommerce_events (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(255),
+    event VARCHAR(255),
+    timestamp TIMESTAMPTZ,
+    server_timestamp TIMESTAMPTZ,
+    session_id VARCHAR(255),
+    user_id VARCHAR(255),
+    client_ip VARCHAR(50),
+    user_agent TEXT,
+    properties JSONB,
+    queue_name VARCHAR(100),
+    processed_timestamp TIMESTAMPTZ
 );
 
-CREATE TABLE IF NOT EXISTS raw_data.analytics_events (
-  id SERIAL PRIMARY KEY,
-  type VARCHAR(255),
-  event VARCHAR(255),
-  timestamp TIMESTAMP,
-  server_timestamp TIMESTAMP,
-  session_id VARCHAR(255),
-  user_id VARCHAR(255),
-  client_ip VARCHAR(50),
-  user_agent TEXT,
-  properties JSONB,
-  queue_name VARCHAR(100),
-  processed_timestamp TIMESTAMP
+CREATE TABLE raw_data.analytics_events (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(255),
+    event VARCHAR(255),
+    timestamp TIMESTAMPTZ,
+    server_timestamp TIMESTAMPTZ,
+    session_id VARCHAR(255),
+    user_id VARCHAR(255),
+    client_ip VARCHAR(50),
+    user_agent TEXT,
+    properties JSONB,
+    queue_name VARCHAR(100),
+    processed_timestamp TIMESTAMPTZ
 );
 
--- Legacy table for backward compatibility
-CREATE TABLE IF NOT EXISTS raw_data.events (
-  id SERIAL PRIMARY KEY,
-  session_id VARCHAR(255),
-  event_type VARCHAR(100),
-  timestamp TIMESTAMP,
-  path VARCHAR(255),
-  product_id VARCHAR(100),
-  value NUMERIC,
-  transaction_id VARCHAR(255),
-  reason VARCHAR(255)
+CREATE TABLE raw_data.event_queue (
+    id SERIAL PRIMARY KEY,
+    type VARCHAR(255),
+    timestamp TIMESTAMPTZ,
+    server_timestamp TIMESTAMPTZ,
+    session_id VARCHAR(255),
+    user_id VARCHAR(255),
+    client_ip VARCHAR(50),
+    user_agent TEXT,
+    url TEXT,
+    path TEXT,
+    properties JSONB,
+    queue_name VARCHAR(100),
+    processed_timestamp TIMESTAMPTZ
 );
 EOF
 echo "PostgreSQL schemas and tables created."

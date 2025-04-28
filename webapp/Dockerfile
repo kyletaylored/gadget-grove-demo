@@ -39,6 +39,9 @@ COPY --chown=${NB_USER}:${NB_USER} . .
 # Copy only installed Python packages
 COPY --from=builder /install/deps /usr/local
 
+# Install Playwright system dependencies
+RUN playwright install-deps
+
 # Make sure start.sh is executable
 RUN chmod +x /app/start.sh
 
@@ -50,5 +53,8 @@ ENV DD_GIT_REPOSITORY_URL=$GIT_REPOSITORY_URL
 
 # Use non-root user
 USER ${NB_USER}
+
+# Install Playwright and only Chromium browser
+RUN playwright install chromium
 
 CMD ["/app/start.sh"]

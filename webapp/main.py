@@ -288,19 +288,18 @@ def generate_products(reload=False):
 # --- Routes ---
 
 
-@app.get("/", response_class=HTMLResponse)
-def home(request: Request):
-    """Redirect to shop page"""
-    return RedirectResponse(url="/shop")
-
-
 @app.get("/shop", response_class=HTMLResponse)
+def home(request: Request):
+    """Redirect legacy /shop path to /"""
+    return RedirectResponse(url="/")
+
+
+@app.get("/", response_class=HTMLResponse)
 def shop_ui(request: Request, session: UserSession = Depends(get_session)):
-    """Main shop UI with session management"""
+    """Main shop UI"""
     products = generate_products()
     categories = list(CATEGORIES.keys())
 
-    # Set session cookie in response
     response = templates.TemplateResponse(
         "shop.html",
         {
@@ -623,3 +622,39 @@ def simulate():
                 print(f"Error sending events to RabbitMQ: {e}")
 
         return {"status": "simulated", "session_id": session_id, "events": events}
+
+
+@app.get("/{full_path:path}", response_class=HTMLResponse)
+def catch_all_spa_routes(full_path: str, request: Request, session: UserSession = Depends(get_session)):
+    """Catch-all route to support SPA deep links (like /category/..., /product/...)"""
+
+    # Avoid intercepting real assets or API routes
+    if full_path.startswith("api/") or full_path.startswith("static/") or '.' in full_path:
+        return Response(status_code=404)
+
+    products = generate_products()
+    categories = list(CATEGORIES.keys())
+
+    response = templates.TemplateResponse(
+        "shop.html",
+        {
+            "request": request,
+            "user": session.user_data,
+            "products": products,
+            "categories": categories,
+            "session_id": session.session_id,
+            "dd_rum_client_token": os.getenv("DD_RUM_CLIENT_TOKEN"),
+            "dd_rum_application_id": os.getenv("DD_RUM_APPLICATION_ID"),
+            "dd_rum_site": os.getenv("DD_RUM_SITE")
+        }
+    )
+
+    response.set_cookie(
+        key=SESSION_COOKIE_NAME,
+        value=session.session_id,
+        max_age=SESSION_EXPIRY * 60,
+        httponly=True,
+        samesite="lax"
+    )
+
+    return response

@@ -3,7 +3,6 @@
  * Tracks user behavior and sends it to RabbitMQ via the backend
  */
 document.addEventListener('DOMContentLoaded', function () {
-    // Initialize analytics
     const analytics = window._analytics.Analytics({
         app: 'gadgetgrove',
         version: '1.0.0',
@@ -14,35 +13,25 @@ document.addEventListener('DOMContentLoaded', function () {
                 trackClicks: true,
                 trackFormSubmissions: true,
                 debug: false,
-                // Enrich each event with user and session data
                 enrichEventData: (data) => {
-                    // Add session ID if available
-                    const sessionId = document.querySelector('meta[name="session-id"]')?.getAttribute('content');
-                    if (sessionId) {
-                        data.sessionId = sessionId;
-                    }
-
-                    // Add user ID if available
-                    const userId = document.querySelector('meta[name="user-id"]')?.getAttribute('content');
-                    if (userId) {
-                        data.userId = userId;
-                    }
-
+                    const sessionId = document.querySelector('meta[name="session-id"]')?.content;
+                    const userId = document.querySelector('meta[name="user-id"]')?.content;
+                    if (sessionId) data.sessionId = sessionId;
+                    if (userId) data.userId = userId;
                     return data;
                 }
             })
         ]
     });
 
-    // Track initial page view
+    window.analytics = analytics;
+
     analytics.page();
 
-    // Track product views and add-to-cart events
     initEcommerceTracking(analytics);
-
-    // Track user identification
     initUserTracking(analytics);
 });
+
 
 /**
  * Initialize e-commerce tracking

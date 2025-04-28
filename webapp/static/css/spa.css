@@ -1,0 +1,102 @@
+/* Additional styles for SPA behavior */
+.page-view {
+    transition: opacity 0.3s;
+  }
+  
+  /* Category cards on home page */
+  .category-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .category-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+  }
+  
+  /* Product cards */
+  .product-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+  }
+  
+  .product-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.1) !important;
+  }
+  
+  .product-brand {
+    color: #0d6efd;
+    font-weight: 500;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    margin-bottom: 0.5rem;
+  }
+  
+  .product-link {
+    text-decoration: none;
+    color: inherit;
+  }
+  
+  .product-link:hover {
+    color: #0d6efd;
+    cursor: pointer;
+  }
+  
+  .rating {
+    color: #ffc107;
+  }
+  
+  .product-price {
+    font-weight: bold;
+    font-size: 1.2rem;
+    color: #212529;
+  }
+  
+  .badge-feature {
+    margin-right: 0.25rem;
+    margin-bottom: 0.25rem;
+    display: inline-block;
+  }
+  
+  /* Product detail page */
+  .product-detail-card {
+    border: none;
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.05);
+    padding: 1.5rem;
+  }
+  
+  .product-title {
+    font-size: 2rem;
+    font-weight: 600;
+  }
+  
+  .product-features ul {
+    padding-left: 1rem;
+  }
+  
+  /* User avatar in nav */
+  .user-profile {
+    display: flex;
+    align-items: center;
+  }
+  
+  .user-avatar {
+    width: 32px;
+    height: 32px;
+    background-color: rgba(255, 255, 255, 0.2);
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.5rem;
+    font-weight: bold;
+  }
+  
+  /* Cart */
+  .cart-item {
+    padding-bottom: 1rem;
+    border-bottom: 1px solid #eee;
+  }
+  
+  .out-of-stock {
+    color: #dc3545;
+  }

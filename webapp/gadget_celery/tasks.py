@@ -7,9 +7,9 @@ import random
 import requests
 import time
 import logging
-from datetime import datetime, UTC
-# Ensure your utils.py is accessible, e.g., in the parent directory or same package
-from utils import send_event  # Make sure utils.py is structured correctly
+import subprocess
+import sys
+import asyncio
 
 # Datadog tracing
 from ddtrace import patch_all
@@ -25,7 +25,6 @@ logger.level = logging.INFO
 
 # Configuration
 WEBAPP_URL = os.getenv("WEBAPP_URL", "http://webapp:8000")
-# Note: MAX_WORKERS is typically a worker configuration, not used in tasks directly
 MAX_WORKERS = int(os.getenv("MAX_WORKERS", 10))
 
 # RabbitMQ queues
@@ -47,7 +46,7 @@ QUEUES = {
 @app.task(name="traffic.generate_traffic")
 def generate_traffic(num_sessions=1):
     """Generate simulated traffic by calling the /simulate endpoint"""
-    logger.info(f"Generating {num_sessions} simulated user sessions")
+    logger.info(f"Generating {num_sessions} simulated user sessions (API)")
 
     successful_sessions = 0
     for _ in range(num_sessions):
@@ -65,55 +64,53 @@ def generate_traffic(num_sessions=1):
         except Exception as e:
             logger.error(f"Error generating traffic: {e}")
 
-        # Random delay between sessions (1-3 seconds)
-        # Using uniform for float seconds, as in your original code
         time.sleep(random.uniform(1, 3))
 
     return f"Successfully generated {successful_sessions} of {num_sessions} user sessions"
 
 
-@app.task(name="traffic.simulate_session")
-def simulate_user_session():
-    """Simulate a user session by generating events directly"""
-    session_id = str(random.randint(10000, 99999))
-    events = []
+@app.task(name="traffic.simulate_browser_sessions")
+def simulate_browser_sessions(num_sessions=1):
+    """Simulate browser sessions using Playwright asynchronously"""
+    logger.info(
+        f"Simulating {num_sessions} browser sessions (headless, async)")
 
-    # Generate page view event
-    events.append({
-        "type": "page_view",
-        "url": f"{WEBAPP_URL}/",
-        "path": "/",
-        "title": "GadgetGrove Shop",
-        "timestamp": datetime.now(UTC).isoformat(),
-        "sessionId": session_id
-    })
+    async def run_session(index):
+        try:
+            process = await asyncio.create_subprocess_exec(
+                sys.executable, "/app/simulate_browser.py",
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE
+            )
 
-    # Send events to the appropriate queues
-    for event in events:
-        event_type = event.get("type")
-        # Handle potential custom event type extraction if applicable
-        if event_type == "custom_event" and "event" in event:
-            # Assuming custom events have an 'event' field
-            event_type = event["event"]
+            stdout, stderr = await process.communicate()
 
-        # Determine queue name - falls back to 'analytics_events' if type not in QUEUES
-        queue_name = QUEUES.get(event_type, "analytics_events")
+            if process.returncode == 0:
+                logger.info(
+                    f"[Session {index}] Completed successfully:\n{stdout.decode().strip()}")
+            else:
+                logger.error(
+                    f"[Session {index}] Failed with error:\n{stderr.decode().strip()}")
 
-        # Send to RabbitMQ using your utility function
-        # Ensure send_event handles sending to the correct queue based on event type or queue_name
-        send_event(event)  # Your send_event logic should handle routing
+        except Exception as e:
+            logger.error(f"[Session {index}] Error running session: {e}")
 
-    return f"Generated session {session_id} with {len(events)} events"
+    async def run_all_sessions():
+        tasks = [run_session(i + 1) for i in range(num_sessions)]
+        await asyncio.gather(*tasks)
+
+    asyncio.run(run_all_sessions())
+
+    return f"Scheduled {num_sessions} async browser sessions"
 
 
 @app.task(name="traffic.schedule_generation")
 def schedule_traffic_generation():
     """Schedule periodic traffic generation"""
-    # Random number of sessions to generate (1-5)
     num_sessions = random.randint(1, 5)
 
     # Generate traffic - schedule the task to run asynchronously
-    generate_traffic.delay(num_sessions)
+    simulate_browser_sessions.delay(num_sessions)
 
     return f"Scheduled generation of {num_sessions} sessions"
 
@@ -124,10 +121,6 @@ def schedule_traffic_generation():
 def process_raw_events(event_type=None):
     """Process raw event files (placeholder for actual processing)"""
     logger.info(f"Processing raw events of type: {event_type}")
-
-    # You would implement actual file processing here
-    # This is just a placeholder to show the task is running
-
     return f"Processed events of type {event_type}"
 
 
@@ -135,7 +128,4 @@ def process_raw_events(event_type=None):
 def cleanup_old_files(days=7):
     """Clean up old processed files"""
     logger.info(f"Cleaning up files older than {days} days")
-
-    # You would implement file cleanup logic here
-
     return f"Cleaned up old files"

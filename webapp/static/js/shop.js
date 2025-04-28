@@ -606,4 +606,25 @@ document.addEventListener('DOMContentLoaded', function () {
             }, 60000);
         }
     });
+
+    function initializeAddToCartButtons() {
+        document.querySelectorAll('.add-to-cart').forEach(button => {
+            if (!button.dataset.listenerAttached) {
+                button.addEventListener('click', function () {
+                    try {
+                        const productId = this.getAttribute('data-product-id');
+                        const productData = window.PRODUCT_DATA[productId];
+                        if (productData) {
+                            addToCart(productData);
+                        }
+                    } catch (error) {
+                        console.error('Error adding product to cart:', error);
+                    }
+                });
+                button.dataset.listenerAttached = true; // Mark this button as handled
+            }
+        });
+    }
+
+    window.initializeAddToCartButtons = initializeAddToCartButtons;
 });
