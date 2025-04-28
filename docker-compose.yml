@@ -2,7 +2,7 @@ services:
   webapp:
     build:
       context: ./webapp
-    image: gadgetgrove-webapp:latest
+    image: gadgetgrove-webapp:${IMAGE_TAG:-latest}
     ports:
       - "8000:8000" # FastAPI
       - "8050:8050" # Dash
@@ -11,9 +11,12 @@ services:
       - logs:/var/log/webapp
     environment:
       DD_SERVICE: gadgetgrove-webapp
-      DD_VERSION: ${DD_VERSION:-1.0.0}
+      DD_VERSION: ${IMAGE_TAG:-latest}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       DD_LOGS_INJECTION: true
+      DD_RUM_CLIENT_TOKEN: ${DD_RUM_CLIENT_TOKEN}
+      DD_RUM_APPLICATION_ID: ${DD_RUM_APPLICATION_ID}
+      DD_RUM_SITE: ${DD_RUM_SITE}
 
       RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
@@ -30,22 +33,26 @@ services:
     depends_on:
       - rabbitmq
       - postgres-db
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "1g"
     labels:
       com.datadoghq.ad.logs: '[{"source": "python", "service": "gadgetgrove-webapp"}]'
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
       com.datadoghq.tags.service: gadgetgrove-webapp
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
+      com.datadoghq.tags.version: ${IMAGE_TAG:-latest}
 
   # Celery worker for traffic generation tasks
   celery-traffic:
-    image: gadgetgrove-webapp:latest
+    image: gadgetgrove-webapp:${IMAGE_TAG:-latest}
     command: ddtrace-run celery -A gadget_celery.app worker --loglevel=info --queues=traffic_generation --concurrency=6
     volumes:
       - ./webapp:/app
       - logs:/var/log/celery-traffic
     environment:
       DD_SERVICE: gadgetgrove-celery-traffic
-      DD_VERSION: ${DD_VERSION:-1.0.0}
+      DD_VERSION: ${IMAGE_TAG:-latest}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       DD_LOGS_INJECTION: true
 
@@ -61,24 +68,30 @@ services:
       WEBAPP_URL: ${WEBAPP_URL:-http://webapp:8000}
       MAX_WORKERS: ${MAX_WORKERS:-10}
     depends_on:
-      - rabbitmq
-      - webapp
+      rabbitmq:
+        condition: service_healthy
+      webapp:
+        condition: service_started
+    deploy:
+      resources:
+        limits:
+          cpus: "0.8"
+          memory: "2g"
     labels:
       com.datadoghq.ad.logs: '[{"source": "python", "service": "gadgetgrove-celery-traffic"}]'
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
       com.datadoghq.tags.service: gadgetgrove-celery-traffic
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
+      com.datadoghq.tags.version: ${IMAGE_TAG:-latest}
 
   # Celery beat scheduler to trigger periodic tasks
   celery-beat:
-    image: gadgetgrove-webapp:latest
+    image: gadgetgrove-webapp:${IMAGE_TAG:-latest}
     command: ddtrace-run celery -A gadget_celery.app beat --loglevel=info
     volumes:
       - ./webapp:/app
       - logs:/var/log/celery-beat
     environment:
       DD_SERVICE: gadgetgrove-celery-beat
-      DD_VERSION: ${DD_VERSION:-1.0.0}
+      DD_VERSION: ${IMAGE_TAG:-latest}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       DD_LOGS_INJECTION: true
 
@@ -87,15 +100,19 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.3"
+          memory: "256m"
     labels:
       com.datadoghq.ad.logs: '[{"source": "python", "service": "gadgetgrove-celery-beat"}]'
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
       com.datadoghq.tags.service: gadgetgrove-celery-beat
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
+      com.datadoghq.tags.version: ${IMAGE_TAG:-latest}
 
   # Raw data consumer for RabbitMQ events
   raw-consumer:
-    image: gadgetgrove-webapp:latest
+    image: gadgetgrove-webapp:${IMAGE_TAG:-latest}
     command: ddtrace-run python3 consumer.py
     volumes:
       - ./webapp:/app
@@ -103,7 +120,7 @@ services:
       - logs:/var/log/consumer
     environment:
       DD_SERVICE: gadgetgrove-consumer
-      DD_VERSION: ${DD_VERSION:-1.0.0}
+      DD_VERSION: ${IMAGE_TAG:-latest}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       DD_LOGS_INJECTION: true
 
@@ -114,11 +131,15 @@ services:
     depends_on:
       rabbitmq:
         condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512m"
     labels:
       com.datadoghq.ad.logs: '[{"source": "python", "service": "gadgetgrove-consumer"}]'
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
       com.datadoghq.tags.service: gadgetgrove-consumer
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
+      com.datadoghq.tags.version: ${IMAGE_TAG:-latest}
 
   # RabbitMQ server
   rabbitmq:
@@ -129,29 +150,29 @@ services:
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
       - logs:/var/log/rabbitmq
+    user: "999:999"
     healthcheck:
       test: ["CMD", "rabbitmqctl", "status"]
       interval: 10s
       timeout: 10s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "1g"
     labels:
-      com.datadoghq.ad.logs: '[{"source": "rabbitmq", "service": "rabbitmq"}]'
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
-      com.datadoghq.tags.service: rabbitmq
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
-      com.datadoghq.ad.checks: |
-        {
-          "rabbitmq": {
-            "instances": [
-              {
-                "url": "http://%%host%%:15672",
-                "username": "guest",
-                "password": "guest",
-                "rabbitmq_api_url": "http://%%host%%:15672/api/"
-              }
-            ]
+      com.datadoghq.ad.check_names: '["rabbitmq"]'
+      com.datadoghq.ad.init_configs: "[{}]"
+      com.datadoghq.ad.instances: |
+        [
+          {
+            "url": "http://%%host%%:15672",
+            "username": "guest",
+            "password": "guest",
+            "rabbitmq_api_url": "http://%%host%%:15672/api/"
           }
-        }
+        ]
 
   # Postgres database
   postgres-db:
@@ -163,57 +184,75 @@ services:
       - postgres-data:/var/lib/postgresql/data
       - logs:/var/log/postgres
       - ./postgres/custom.conf:/etc/postgresql/postgresql.conf:ro
+      - ./postgres/init-scripts:/docker-entrypoint-initdb.d
     environment:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-events}
       DATADOG_PG_PASSWORD: ${DATADOG_PG_PASSWORD:-datadog_password}
+      PREFECT_DB: ${PREFECT_DB:-prefect}
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "2.0"
+          memory: "2g"
     labels:
       com.datadoghq.ad.logs: '[{"source": "postgresql", "service": "postgres"}]'
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
       com.datadoghq.tags.service: postgres
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
-      com.datadoghq.ad.checks: |
-        {
-          "postgres": {
-            "init_config": {},
-            "instances": [
-              {
-                "host": "%%host%%",
-                "port": 5432,
-                "username": "datadog",
-                "password": "${DATADOG_PG_PASSWORD}",
-                "dbname": "postgres",
-                "dbm": true,
-                "collect_function_metrics": true,
-                "collect_count_metrics": true,
-                "collect_database_size_metrics": true,
-                "collect_default_database": true,
-                "tags": ["service:postgres"],
-                "database_autodiscovery": {
-                  "enabled": true
-                },
-                "agent_jobs": {
-                  "enabled": true,
-                  "collection_interval": 15,
-                  "history_row_limit": 10000,
-                },
-                "schemas_collection": {
-                  "enabled": true,
-                },
-                "include_index_usage_metrics": true,
-                "deadlocks_collection": {
-                  "enabled": true,
-                }
-              }
-            ]
+      com.datadoghq.ad.check_names: '["postgres"]'
+      com.datadoghq.ad.init_configs: "[{}]"
+      com.datadoghq.ad.instances: |
+        [
+          {
+            "host": "%%host%%",
+            "port": 5432,
+            "username": "datadog",
+            "password": "%%env_DATADOG_PG_PASSWORD%%",
+            "dbname": "postgres",
+            "dbm": true,
+            "collect_function_metrics": true,
+            "collect_count_metrics": true,
+            "collect_database_size_metrics": true,
+            "collect_default_database": true,
+            "tags": ["service:postgres"],
+            "database_autodiscovery": {
+              "enabled": true
+            },
+            "agent_jobs": {
+              "enabled": true,
+              "collection_interval": 15,
+              "history_row_limit": 10000
+            },
+            "schemas_collection": {
+              "enabled": true
+            },
+            "include_index_usage_metrics": true,
+            "deadlocks_collection": {
+              "enabled": true
+            }
           }
-        }
+        ]
+
+  wait-for-prefect-db:
+    image: postgres:15
+    command: bash -c "/check-prefect-db.sh"
+    volumes:
+      - ./postgres/check-prefect-db.sh:/check-prefect-db.sh
+    depends_on:
+      postgres-db:
+        condition: service_healthy
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      PREFECT_DB: ${PREFECT_DB:-prefect}
+    labels:
+      com.datadoghq.ad.logs: '[{"source": "postgresql", "service": "wait-for-prefect-db"}]'
+      com.datadoghq.tags.service: wait-for-prefect-db
 
   spark-master:
     image: bitnami/spark:3.5.5
@@ -230,28 +269,31 @@ services:
       SPARK_REST_API_ENABLED: "true"
       SPARK_MASTER_WEBUI_PORT: 8080
       DD_LOGS_INJECTION: true
+      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "2g"
     labels:
       com.datadoghq.ad.logs: '[{"source": "spark", "service": "spark-master"}]'
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
       com.datadoghq.tags.service: spark-master
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
-      com.datadoghq.ad.checks: |
-        {
-          "spark": {
-            "init_config": {},
-            "instances": [
-              {
-                "cluster_name": "gadgetgrove-spark",
-                "spark_url": "%%host%%:8080",
-              }
-            ]
+      com.datadoghq.ad.check_names: '["spark"]'
+      com.datadoghq.ad.init_configs: "[{}]"
+      com.datadoghq.ad.instances: |
+        [
+          {
+            "cluster_name": "gadgetgrove-spark",
+            "spark_url": "%%host%%:8080"
           }
-        }
+        ]
 
   spark-worker:
     image: bitnami/spark:3.5.5
     depends_on:
       - spark-master
+    ports:
+      - "8081:8081"
     volumes:
       - data-landing:/data
       - logs:/var/log/spark-worker
@@ -260,6 +302,7 @@ services:
       DD_LOGS_INJECTION: true
       SPARK_MODE: worker
       SPARK_MASTER_URL: ${SPARK_MASTER_URL:-spark://spark-master:7077}
+      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
     deploy:
       resources:
         limits:
@@ -267,13 +310,11 @@ services:
           memory: "2g"
     labels:
       com.datadoghq.ad.logs: '[{"source": "spark", "service": "spark-worker"}]'
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
       com.datadoghq.tags.service: spark-worker
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
 
   # Prefect server
   prefect-server:
-    image: gadgetgrove-prefect-agent:latest
+    image: gadgetgrove-prefect-agent:${IMAGE_TAG:-latest}
     command: ddtrace-run prefect server start
     ports:
       - "4200:4200"
@@ -282,8 +323,8 @@ services:
       - logs:/var/log/prefect-server
       - ./prefect/check_api.py:/check_api.py
     environment:
-      DD_SERVICE: ${DD_SERVICE:-prefect-server}
-      DD_VERSION: ${DD_VERSION:-1.0.0}
+      DD_SERVICE: prefect-server
+      DD_VERSION: ${IMAGE_TAG:-latest}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       DD_LOGS_INJECTION: true
 
@@ -294,29 +335,33 @@ services:
       PREFECT_DB: ${PREFECT_DB:-prefect}
 
     depends_on:
-      postgres-db:
-        condition: service_healthy
+      wait-for-prefect-db:
+        condition: service_completed_successfully
     healthcheck:
       test: ["CMD", "ddtrace-run", "python3", "/app/prefect/check_api.py"]
       interval: 10s
       timeout: 5s
       retries: 5
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "1g"
     labels:
-      com.datadoghq.ad.logs: '[{"source": "prefect", "service": "prefect-server"}]'
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
+      com.datadoghq.ad.logs: '[{"source": "python", "service": "prefect-server"}]'
       com.datadoghq.tags.service: prefect-server
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
+      com.datadoghq.tags.version: ${IMAGE_TAG:-latest}
 
   prefect-agent:
+    image: gadgetgrove-prefect-agent:${IMAGE_TAG:-latest}
     build:
       context: .
       dockerfile: ./prefect/agent.Dockerfile
       args:
         POSTGRES_JDBC_VERSION: ${POSTGRES_JDBC_VERSION:-42.7.3}
-    image: gadgetgrove-prefect-agent:latest
     environment:
       DD_SERVICE: prefect-agent
-      DD_VERSION: ${DD_VERSION:-1.0.0}
+      DD_VERSION: ${IMAGE_TAG:-latest}
       DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       DD_LOGS_INJECTION: true
 
@@ -332,7 +377,6 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
       POSTGRES_DB: ${POSTGRES_DB:-events}
-      POSTGRES_JDBC_VERSION: ${POSTGRES_JDBC_VERSION:-42.7.3}
 
       RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
@@ -350,14 +394,18 @@ services:
       timeout: 10s
       retries: 3
     restart: on-failure
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512m"
     labels:
-      com.datadoghq.ad.logs: '[{"source": "prefect", "service": "prefect-agent"}]'
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
+      com.datadoghq.ad.logs: '[{"source": "python", "service": "prefect-agent"}]'
       com.datadoghq.tags.service: prefect-agent
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
+      com.datadoghq.tags.version: ${IMAGE_TAG:-latest}
 
   init:
-    image: gadgetgrove-webapp:latest
+    image: gadgetgrove-webapp:${IMAGE_TAG:-latest}
     command: init/run.sh
     user: root
     depends_on:
@@ -366,7 +414,7 @@ services:
       rabbitmq:
         condition: service_healthy
       prefect-server:
-        condition: service_started
+        condition: service_healthy
     volumes:
       - ./webapp:/app
       - ./prefect:/app/prefect
@@ -374,34 +422,29 @@ services:
       - logs:/var/log/init
     environment:
       DD_SERVICE: gadgetgrove-init
-      DD_VERSION: ${DD_VERSION:-1.0.0}
+      DD_VERSION: ${IMAGE_TAG:-latest}
       DD_LOGS_INJECTION: true
+      DD_AGENT_HOST: ${DD_AGENT_HOST:-datadog-agent}
       WORK_POOL: ${WORK_POOL:-default-agent-pool}
       PREFECT_API_URL: ${PREFECT_API_URL:-http://prefect-server:4200/api}
-
-      POSTGRES_HOST: ${POSTGRES_HOST:-postgres-db}
-      POSTGRES_PORT: ${POSTGRES_PORT:-5432}
-      POSTGRES_USER: ${POSTGRES_USER:-postgres}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_DB: ${POSTGRES_DB:-events}
-      DATADOG_PG_PASSWORD: ${DATADOG_PG_PASSWORD:-datadog_password}
 
       RABBITMQ_HOST: ${RABBITMQ_HOST:-rabbitmq}
       RABBITMQ_PORT: ${RABBITMQ_PORT:-5672}
       RABBITMQ_QUEUE: ${RABBITMQ_QUEUE:-event_queue}
-
-      PREFECT_DB: ${PREFECT_DB:-prefect}
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512m"
     labels:
-      com.datadoghq.tags.env: ${DD_ENV:-podman}
       com.datadoghq.tags.service: gadgetgrove-init
-      com.datadoghq.tags.version: ${DD_VERSION:-1.0.0}
+      com.datadoghq.tags.version: ${IMAGE_TAG:-latest}
 
   # Datadog Agent
   datadog-agent:
     image: gcr.io/datadoghq/agent:7
+    # entrypoint: sh -c "agent integration install -w /tmp/datadog_prefect-1.0.0-py3-none-any.whl --allow-root && agent run"
     pid: "host"
-    ports:
-      - 5002:5002
     security_opt:
       - apparmor:unconfined
     cap_add:
@@ -424,32 +467,34 @@ services:
       - /etc/group:/host/etc/group:ro
       - /:/host/root:ro
       - /sys/kernel/debug:/host/sys/kernel/debug
+      # - ./datadog/datadog_prefect-1.0.0-py3-none-any.whl:/tmp/datadog_prefect-1.0.0-py3-none-any.whl
+      # - ./datadog/prefect.yaml:/etc/datadog-agent/conf.d/prefect.d/conf.yaml
     environment:
+      #  Agent configuration
       DD_API_KEY: ${DD_API_KEY}
       DD_SITE: ${DD_SITE:-datadoghq.com}
       DD_ENV: ${DD_ENV:-podman}
-      DD_VERSION: ${DD_VERSION:-1.0.0}
       DD_HOSTNAME: ${DD_HOSTNAME:-gadgetgrove}
       HOSTNAME: ${HOSTNAME:-gadgetgrove}
       DD_HOSTNAME_TRUST_UTS_NAMESPACE: true
-      DD_APM_ENABLED: true
+
+      #  Logs configuration
       DD_LOGS_ENABLED: true
       DD_LOGS_INJECTION: true
       DD_LOGS_CONFIG_AUTO_MULTI_LINE_DETECTION: true
+      DD_LOGS_CONFIG_AUTO_MULTI_LINE_DEFAULT_MATCH_THRESHOLD: 0.5
       DD_LOGS_CONFIG_CONTAINER_COLLECT_ALL: true
+      DD_CONTAINER_EXCLUDE: "image:datadog/agent"
+
+      #  APM configuration
+      DD_APM_ENABLED: true
       DD_PROFILING_ENABLED: true
       DD_RUNTIME_METRICS_ENABLED: true
       DD_APM_NON_LOCAL_TRAFFIC: ${DD_APM_NON_LOCAL_TRAFFIC:-true}
       DD_DOGSTATSD_NON_LOCAL_TRAFFIC: ${DD_DOGSTATSD_NON_LOCAL_TRAFFIC:-true}
       DD_DOGSTATSD_SOCKET: ${DD_DOGSTATSD_SOCKET:-/var/run/datadog/dsd.socket}
       DD_APM_RECEIVER_SOCKET: ${DD_APM_RECEIVER_SOCKET:-/var/run/datadog/apm.socket}
-      DD_PROCESS_CONFIG_PROCESS_COLLECTION_ENABLED: true
-      DD_GUI_PORT: 5002
-      DD_COMPLIANCE_CONFIG_ENABLED: true
-      DD_COMPLIANCE_CONFIG_HOST_BENCHMARKS_ENABLED: true
-      DD_RUNTIME_SECURITY_CONFIG_ENABLED: true
-      DD_RUNTIME_SECURITY_CONFIG_REMOTE_CONFIGURATION_ENABLED: true
-      HOST_ROOT: /host/root
+
     privileged: true
     dns:
       - 8.8.8.8
@@ -459,6 +504,11 @@ services:
       interval: 30s
       timeout: 10s
       retries: 3
+    deploy:
+      resources:
+        limits:
+          cpus: "1.0"
+          memory: "1.5g"
 
 networks:
   default:
