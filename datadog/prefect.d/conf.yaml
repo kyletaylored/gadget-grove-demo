@@ -1,0 +1,4 @@
+init_config:
+instances:
+  - api_url: http://prefect-server:4200/api
+    timeout: 5
